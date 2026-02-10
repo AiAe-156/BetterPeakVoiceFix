@@ -20,7 +20,6 @@ namespace PeakVoiceFix
         public static VoiceUIManager Instance;
         public TextMeshProUGUI statsText;
         private Canvas myCanvas;
-        // ... (其余私有变量保持不变)
         private bool showDebugConsole = false;
         private Rect debugWindowRect = new Rect(20, 20, 600, 400);
         private Vector2 debugScrollPosition;
@@ -32,6 +31,7 @@ namespace PeakVoiceFix
         private bool isResizing = false;
         private Rect resizeHandleRect;
         private Dictionary<int, float> joinTimes = new Dictionary<int, float>();
+
         private const string C_GREEN = "#90EE90";
         private const string C_PALE_GREEN = "#98FB98";
         private const string C_YELLOW = "#F0E68C";
@@ -40,8 +40,8 @@ namespace PeakVoiceFix
         private const string C_TEXT = "#dfdac2";
         private const string C_GREY = "#808080";
         private const string C_GOLD = "#ffd700";
-        // [新增] 低饱和度绿色 (错位)
-        private const string C_GHOST_GREEN = "#8FBC8F";
+        // [修改] 用户指定的淡绿色
+        private const string C_GHOST_GREEN = "#b2d3b2";
 
         private float nextUiUpdateTime = 0f;
         private bool isDetailMode = false;
@@ -66,7 +66,6 @@ namespace PeakVoiceFix
             if (GUILayout.Button("清空")) debugLogs.Clear();
             if (GUILayout.Button("打印语音底层名单")) DumpVoicePlayers();
             GUILayout.EndHorizontal();
-            // ... (其余部分保持不变)
             filterScrollPosition = GUILayout.BeginScrollView(filterScrollPosition, GUILayout.Height(40));
             GUILayout.BeginHorizontal();
             if (GUILayout.Button(logFilterMode == 0 ? "[★全部]" : "全部", GUILayout.Width(60))) logFilterMode = 0;
@@ -78,7 +77,7 @@ namespace PeakVoiceFix
             GUILayout.EndScrollView(); GUI.DragWindow(new Rect(0, 0, 10000, 20)); resizeHandleRect = new Rect(debugWindowRect.width - 20, debugWindowRect.height - 20, 20, 20); GUI.Label(resizeHandleRect, "◢"); Event e = Event.current; if (e.type == EventType.MouseDown && resizeHandleRect.Contains(e.mousePosition)) isResizing = true; else if (e.type == EventType.MouseUp) isResizing = false; else if (e.type == EventType.MouseDrag && isResizing) { debugWindowRect.width += e.delta.x; debugWindowRect.height += e.delta.y; if (debugWindowRect.width < 300) debugWindowRect.width = 300; if (debugWindowRect.height < 200) debugWindowRect.height = 200; }
         }
 
-        // [修改] Dump 增强: 增加 IP 和 版本号
+        // [修复] Dump 显示版本号
         private void DumpVoicePlayers()
         {
             if (NetworkManager.punVoice == null || NetworkManager.punVoice.Client == null || NetworkManager.punVoice.Client.CurrentRoom == null) { AddLog("System", "客户端未连接", true); return; }
@@ -91,7 +90,6 @@ namespace PeakVoiceFix
                 string name = NetworkManager.GetPlayerName(id);
                 bool isGhost = NetworkManager.IsGhost(id);
 
-                // 尝试获取缓存中的 IP 和 版本
                 string ip = "N/A";
                 string ver = "";
                 if (NetworkManager.PlayerCache.ContainsKey(id))
@@ -102,7 +100,6 @@ namespace PeakVoiceFix
 
                 string ghostTag = isGhost ? " [幽灵]" : "";
                 string verStr = string.IsNullOrEmpty(ver) ? "" : $" | Ver: {ver}";
-
                 sb.AppendLine($" - ID: {id} | Name: {name} | IP: {ip}{verStr}{ghostTag}");
             }
             AddLog("System", sb.ToString(), true);
@@ -116,6 +113,8 @@ namespace PeakVoiceFix
         public void ShowStatsTemporary() { notificationMsg = $"<color={C_YELLOW}>[系统] 手动操作...</color>"; notificationExpiry = Time.unscaledTime + 5f; }
         private string GetLocalizedState(ClientState state) { switch (state) { case ClientState.Joined: return "已连接"; case ClientState.Disconnected: return "已断开"; default: return state.ToString(); } }
         private string GetMyStateRaw(out string color) { int voicePlayerCount = 0; int total = 0; GetVoiceCounts(out voicePlayerCount, out total); if (IsVoiceConnected()) { if (voicePlayerCount > 1) { color = C_GREEN; return "同步"; } if (voicePlayerCount == 1 && PhotonNetwork.CurrentRoom.PlayerCount > 1) { color = C_YELLOW; return "孤立"; } color = C_GREEN; return "同步"; } if (IsConnectingLocal()) { color = C_YELLOW; return "连接中"; } color = C_RED; return "断开"; }
+
+        // [重构] 核心显示逻辑
         private void AppendCommonStats(StringBuilder sb, bool forceShow)
         {
             bool isSinglePlayer = PhotonNetwork.OfflineMode || (PhotonNetwork.CurrentRoom != null && PhotonNetwork.CurrentRoom.MaxPlayers == 1);
@@ -131,20 +130,45 @@ namespace PeakVoiceFix
                     sb.Append($"<color={C_TEXT}>本机语音: </color>");
                     if (IsVoiceConnected()) { if (PhotonNetwork.IsMasterClient) sb.Append($"<color={C_TEXT}>已连接</color>"); else sb.Append($"<color={C_TEXT}>已连接</color> {FormatStatusTag(myStateRaw, myColor)}"); } else sb.Append($"<color={myColor}>{displayState}</color>");
                     sb.Append("\n");
-                    int joined, total; GetVoiceCounts(out joined, out total);
-                    string countColor = (joined >= total) ? C_GREEN : C_YELLOW;
-                    sb.Append($"<color={C_TEXT}>语音连接人数：</color><color={countColor}>{joined}/{total}</color>\n");
+
+                    int realJoined, total;
+                    GetVoiceCounts(out realJoined, out total);
+                    int ghostCount = NetworkManager.GetGhostCount();
+
+                    // [重构] 格式: 8(黄)+2(淡绿)/10(绿) (2人ID错位)
+                    sb.Append($"<color={C_TEXT}>语音连接人数：</color>");
+
+                    // 8
+                    sb.Append($"<color={C_YELLOW}>{realJoined}</color>");
+
+                    if (ghostCount > 0)
+                    {
+                        // +2
+                        sb.Append($"<color={C_TEXT}>+</color>");
+                        sb.Append($"<color={C_GHOST_GREEN}>{ghostCount}</color>");
+                    }
+
+                    // /10
+                    sb.Append($"<color={C_TEXT}>/</color><color={C_GREEN}>{total}</color>");
+
+                    if (ghostCount > 0)
+                    {
+                        // (2 人ID错位)
+                        sb.Append($" <color={C_TEXT}>(</color><color={C_GHOST_GREEN}>{ghostCount}</color><color={C_TEXT}> 人ID错位)</color>");
+                    }
+                    sb.Append("\n");
                 }
                 if (VoiceFix.ShowPingInNormal != null && VoiceFix.ShowPingInNormal.Value) { int p = PhotonNetwork.GetPing(); string pColor = p < 100 ? C_GREEN : (p < 200 ? C_YELLOW : C_RED); sb.Append($"<color={C_TEXT}>本机延迟: </color><color={pColor}>{p}ms</color>\n"); }
             }
             if (Time.unscaledTime < notificationExpiry) sb.Append($"{notificationMsg}\n");
         }
+
         private void UpdateContent_Normal() { StringBuilder sb = new StringBuilder(); AppendCommonStats(sb, false); statsText.text = sb.ToString(); }
 
         private void UpdateContent_Detail()
         {
             StringBuilder sb = new StringBuilder(); bool proMode = VoiceFix.ShowProfessionalInfo.Value; float alignX = VoiceFix.LatencyOffset.Value;
-            sb.Append($"<align=\"center\"><size=120%><color={C_TEXT}>语音详细状态 (v0.3.2)</color></size></align>\n");
+            sb.Append($"<align=\"center\"><size=120%><color={C_TEXT}>语音详细状态 (v0.3.3)</color></size></align>\n");
             sb.Append($"<align=\"center\"><color={C_TEXT}>------------------</color></align>\n");
             string myIP = GetCurrentIP(); string myColor; string myStateRaw = GetMyStateRaw(out myColor);
             sb.Append($"<size=75%><color={C_TEXT}>本机IP:</color> "); if (PhotonNetwork.IsMasterClient && IsVoiceConnected()) { } else { string myStateText = FormatStatusTag(myStateRaw, myColor); sb.Append($"{myStateText} "); }
@@ -162,7 +186,6 @@ namespace PeakVoiceFix
             sb.Append("</size>\n");
             if (PhotonNetwork.IsMasterClient) { string majIP = GetMajorityIP(out int cnt); if (cnt > 2 && !string.IsNullOrEmpty(majIP) && majIP != myIP) sb.Append($"<color={C_YELLOW}><size=85%>⚠ [警告] 多数玩家({cnt}人)在另一频道!</size></color>\n"); }
 
-            // [修改] 统计幽灵数量 (恢复已连接但ID错位)
             int ghostCount = NetworkManager.GetGhostCount();
 
             List<PlayerRenderData> renderList = new List<PlayerRenderData>();
@@ -181,12 +204,11 @@ namespace PeakVoiceFix
             }
             foreach (var kvp in NetworkManager.PlayerCache) { int actorNr = kvp.Key; if (processedActors.Contains(actorNr)) continue; if (Time.unscaledTime - kvp.Value.LastSeenTime > 5f) continue; renderList.Add(new PlayerRenderData { Name = kvp.Value.PlayerName, IP = kvp.Value.IP, Ping = 0, IsLocal = false, IsHost = false, IsAlive = false, HasModData = true, IsInVoiceRoom = false, ActorNumber = actorNr, RemoteState = kvp.Value.RemoteState }); }
             renderList.Sort((a, b) => { return b.IsLocal.CompareTo(a.IsLocal); });
-            // [传递幽灵标记]
             sb.Append($"<line-height=105%>"); foreach (var d in renderList) BuildPlayerEntry(sb, d.Name, d.IP, d.Ping, d.IsLocal, d.IsHost, proMode, alignX, d.IsAlive, d.HasModData, d.IsInVoiceRoom, ghostCount > 0, d.ActorNumber, d.RemoteState); sb.Append("</line-height>");
-            sb.Append($"<align=\"center\"><color={C_TEXT}>------------------</color></align>\n"); AppendCommonStats(sb, true);
 
-            // [恢复] 显示错位人数
-            if (ghostCount > 0) sb.Append($"<color={C_TEXT}>已连接但ID错位: </color><color={C_PALE_GREEN}>{ghostCount}人</color>\n");
+            // [重构] 底部不再显示单独的错位行，而是使用顶部合并的计数器
+            sb.Append($"<align=\"center\"><color={C_TEXT}>------------------</color></align>\n");
+            AppendCommonStats(sb, true);
 
             if (NetworkManager.ActiveSOSList.Count > 0) { sb.Append($"<align=\"center\"><color={C_TEXT}>------------------</color></align>\n"); sb.Append($"<color={C_YELLOW}>[SOS快照]</color>\n"); string majIP = GetMajorityIP(out int majCnt); string hostStatus = (PhotonNetwork.IsMasterClient || IsIPMatch(majIP)) ? "同步" : majIP; sb.Append($"<size=80%><color={C_TEXT}>多数派: {majIP} ({majCnt}人)</color></size>\n"); foreach (var sos in NetworkManager.ActiveSOSList) { sb.Append($"<size=80%><color={C_RED}>检测到 {sos.PlayerName} 掉线</color></size>\n"); string lastIP = string.IsNullOrEmpty(sos.OriginIP) ? "未知" : sos.OriginIP; sb.Append($"  <size=80%><color={C_TEXT}>目标: ({sos.TargetIP}) | 上次: {lastIP}</color></size>\n"); } }
             if (proMode) { sb.Append($"<align=\"center\"><color={C_TEXT}>------------------</color></align>\n"); string majIP = GetMajorityIP(out int cnt); float ago = Time.unscaledTime - NetworkManager.LastScanTime; sb.Append($"<size=80%><color={C_TEXT}>[缓存快照] ({ago:F0}秒前)</color>\n"); sb.Append($"<color={C_TEXT}>多数派:</color> <color={C_TEXT}>{majIP}</color> <color={C_TEXT}>({cnt}人)</color>\n"); var groups = NetworkManager.PlayerCache.GroupBy(x => x.Value.IP); foreach (var g in groups) { if (g.Key == majIP) continue; string ipLabel = string.IsNullOrEmpty(g.Key) ? "未连接" : g.Key; var names = g.Select(x => x.Value.PlayerName).Take(3); string nameList = string.Join(",", names); sb.Append($"<color={C_TEXT}> - {ipLabel}: {nameList}</color>\n"); } if (NetworkManager.HostHistory.Count > 0) sb.Append($"<color={C_TEXT}>[历史]</color> {NetworkManager.HostHistory[NetworkManager.HostHistory.Count - 1]}\n"); sb.Append("</size>"); }
@@ -195,7 +217,7 @@ namespace PeakVoiceFix
 
         private string GetClientStateLocalized(ClientState state) { switch (state) { case ClientState.PeerCreated: return "初始化中..."; case ClientState.Authenticating: return "验证中..."; case ClientState.Authenticated: return "已验证"; case ClientState.Joining: return "加入中..."; case ClientState.Joined: return "已连接"; case ClientState.Disconnecting: return "断开中..."; case ClientState.Disconnected: return "断开"; case ClientState.ConnectingToGameServer: return "连接到游戏服务器中..."; case ClientState.ConnectingToMasterServer: return "连接到主服务器中..."; case ClientState.ConnectingToNameServer: return "连接到名称服务器中..."; default: return state.ToString(); } }
 
-        // [修改] 增加 hasGhosts 参数
+        // [修复] 将错位状态的颜色改为 C_GHOST_GREEN (#b2d3b2)
         private void BuildPlayerEntry(StringBuilder sb, string name, string ip, int ping, bool isLocal, bool isHost, bool pro, float alignX, bool isAlive, bool hasModData, bool isInVoiceRoom, bool hasGhosts, int actorNumber = -1, byte remoteState = 0)
         {
             int prefixWeight = 0;
@@ -212,8 +234,7 @@ namespace PeakVoiceFix
                         if (Time.unscaledTime - joinTimes[actorNumber] < 25f) { statusLabel = "连接中"; statusColor = C_YELLOW; }
                         else
                         {
-                            // [逻辑升级] 25秒超时后，如果有幽灵，显示 [错位] (绿)，否则 [断开] (红)
-                            if (hasGhosts) { statusLabel = "错位"; statusColor = C_GHOST_GREEN; }
+                            if (hasGhosts) { statusLabel = "错位"; statusColor = C_GHOST_GREEN; } // 使用淡绿色
                             else { statusLabel = "断开"; statusColor = C_RED; }
                         }
                     }
@@ -237,9 +258,10 @@ namespace PeakVoiceFix
             else if (pro && isLocal && isConnecting) { string localState = "连接中..."; if (NetworkManager.punVoice != null && NetworkManager.punVoice.Client != null) localState = GetClientStateLocalized(NetworkManager.punVoice.Client.State); sb.Append($"<voffset=0.17em><size=80%><color={C_TEXT}>  » {localState}</color></size></voffset>\n"); }
         }
 
-        private void GetVoiceCounts(out int joined, out int total)
+        // [修复] 返回两个独立的计数：有效连接数 和 幽灵数
+        private void GetVoiceCounts(out int realJoined, out int total)
         {
-            joined = 0; total = 0;
+            realJoined = 0; total = 0;
             if (PhotonNetwork.PlayerList != null)
             {
                 total = PhotonNetwork.PlayerList.Length;
@@ -247,12 +269,12 @@ namespace PeakVoiceFix
                 {
                     foreach (var id in NetworkManager.punVoice.Client.CurrentRoom.Players.Keys)
                     {
-                        if (!NetworkManager.IsGhost(id)) joined++;
+                        if (!NetworkManager.IsGhost(id)) realJoined++;
                     }
                 }
                 else
                 {
-                    foreach (var p in PhotonNetwork.PlayerList) { if (p.IsLocal) { if (IsVoiceConnected()) joined++; } else if (NetworkManager.PlayerCache.TryGetValue(p.ActorNumber, out var c) && !string.IsNullOrEmpty(c.IP)) joined++; }
+                    foreach (var p in PhotonNetwork.PlayerList) { if (p.IsLocal) { if (IsVoiceConnected()) realJoined++; } else if (NetworkManager.PlayerCache.TryGetValue(p.ActorNumber, out var c) && !string.IsNullOrEmpty(c.IP)) realJoined++; }
                 }
             }
         }

@@ -7,8 +7,8 @@ using PeakVoiceFix.Patches;
 
 namespace PeakVoiceFix
 {
-    // [版本] v0.3.2 - Smart Ghost Detection
-    [BepInPlugin("chuxiaaaa.Aiae.BetterVoiceFix", "BetterVoiceFix", "0.3.2")]
+    // [版本] v0.3.3 - UI Refactor & Chinese Configs
+    [BepInPlugin("chuxiaaaa.Aiae.BetterVoiceFix", "BetterVoiceFix", "0.3.3")]
     public class VoiceFix : BaseUnityPlugin
     {
         public static VoiceFix Instance;
@@ -36,7 +36,7 @@ namespace PeakVoiceFix
         public static ConfigEntry<bool> EnableVirtualTestPlayer;
         public static ConfigEntry<string> TestPlayerName;
 
-        public const string MOD_VERSION = "v0.3.2"; // [新增] 版本常量供广播使用
+        public const string MOD_VERSION = "v0.3.3";
 
         void Awake()
         {
@@ -45,46 +45,46 @@ namespace PeakVoiceFix
             debugLogger = new ManualLogSource("VoiceFixDebug");
             BepInEx.Logging.Logger.Sources.Add(debugLogger);
 
-            // --- UI Settings ---
-            string catUI = "UI Settings";
-            UIPositionSide = Config.Bind(catUI, "Position Side (Right)", true, "If true, UI aligns to the top-right. If false, top-left.");
-            ToggleUIKey = Config.Bind(catUI, "Toggle Key", KeyCode.J, "Key to toggle the voice status panel.");
-            ShowProfessionalInfo = Config.Bind(catUI, "Show Detailed IP Info", true, "Show IP addresses and debug info in the expanded panel.");
+            // --- UI 设置 ---
+            string catUI = "UI设置";
+            UIPositionSide = Config.Bind(catUI, "UI位置方向 (Right)", true, "True为右上角，False为左上角。");
+            ToggleUIKey = Config.Bind(catUI, "开关快捷键", KeyCode.J, "切换语音面板显示的按键。");
+            ShowProfessionalInfo = Config.Bind(catUI, "显示详细IP信息", true, "是否在面板中显示具体的IP地址和调试信息。");
 
-            OffsetX_Right = Config.Bind(catUI, "Right Offset X", 20f, "Horizontal margin from right edge.");
-            OffsetY_Right = Config.Bind(catUI, "Right Offset Y", 20f, "Vertical margin from top edge.");
-            OffsetX_Left = Config.Bind(catUI, "Left Offset X", 20f, "Horizontal margin from left edge.");
-            OffsetY_Left = Config.Bind(catUI, "Left Offset Y", 20f, "Vertical margin from top edge.");
+            OffsetX_Right = Config.Bind(catUI, "右侧边距", 20f, "距离屏幕右边缘的水平距离。");
+            OffsetY_Right = Config.Bind(catUI, "顶部边距(右)", 20f, "距离屏幕上边缘的垂直距离。");
+            OffsetX_Left = Config.Bind(catUI, "左侧边距", 20f, "距离屏幕左边缘的水平距离。");
+            OffsetY_Left = Config.Bind(catUI, "顶部边距(左)", 20f, "距离屏幕上边缘的垂直距离。");
 
-            FontSize = Config.Bind(catUI, "Font Size", 18f, "Base font size for the panel.");
-            HostSymbol = Config.Bind(catUI, "Host Symbol", "★", "Symbol displayed next to the room host's name.");
+            FontSize = Config.Bind(catUI, "字体大小", 18f, "面板文字的基础大小。");
+            HostSymbol = Config.Bind(catUI, "房主标记符号", "★", "显示在房主名字前的特殊符号。");
 
-            // --- Network Settings ---
-            string catNet = "Network Settings";
-            ConnectTimeout = Config.Bind(catNet, "Reconnect Timeout (s)", 25f, "Threshold to force a retry if connection is stuck.");
-            RetryInterval = Config.Bind(catNet, "Retry Interval (s)", 8f, "Cooldown between reconnection attempts.");
-            EnableManualReconnect = Config.Bind(catNet, "Enable Manual Reset (Alt+K)", true, "Allow pressing Alt+K to force disconnect/reconnect.");
-            EnableGhostFix = Config.Bind(catNet, "Enable ID Drift Fix", true, "Prevents 'Unknown' names by scavenging data from the scene.");
+            // --- 网络设置 ---
+            string catNet = "网络设置";
+            ConnectTimeout = Config.Bind(catNet, "重连超时时间 (s)", 25f, "如果连接卡住，超过多少秒判定为断开。");
+            RetryInterval = Config.Bind(catNet, "重试间隔 (s)", 8f, "每次自动重连之间的冷却时间。");
+            EnableManualReconnect = Config.Bind(catNet, "启用手动重置 (Alt+K)", true, "允许按 Alt+K 强制断开或重连语音。");
+            EnableGhostFix = Config.Bind(catNet, "启用ID漂移修复", true, "尝试从场景中搜寻名字以修复 Unknown 问题。");
 
-            // --- Advanced ---
-            string catAdv = "Advanced & Debug";
-            MaxTotalLength = Config.Bind(catAdv, "Max Name Length", 26, new ConfigDescription("Max characters for name display.", new AcceptableValueRange<int>(10, 60)));
-            LatencyOffset = Config.Bind(catAdv, "Latency Alignment Offset", 350f, "Pixel offset for the Ping column.");
-            AutoHideNormal = Config.Bind(catAdv, "Auto Hide Normal UI", true, "Hide the simple UI when everyone is connected.");
-            ShowPingInNormal = Config.Bind(catAdv, "Show Ping in Normal UI", true, "Show local ping at the bottom of the simple UI.");
-            HideOnMenu = Config.Bind(catAdv, "Hide on Menu", true, "Hide UI when ESC menu is open.");
-            EnableDebugLogs = Config.Bind(catAdv, "Enable Debug Logs", false, "Print verbose network logs to console.");
+            // --- 高级设置 ---
+            string catAdv = "高级与调试";
+            MaxTotalLength = Config.Bind(catAdv, "最大名字长度", 26, new ConfigDescription("显示名字的最大字符数。", new AcceptableValueRange<int>(10, 60)));
+            LatencyOffset = Config.Bind(catAdv, "延迟对齐偏移量", 350f, "Ping值显示的水平像素偏移。");
+            AutoHideNormal = Config.Bind(catAdv, "自动隐藏简易UI", true, "当所有人连接正常时，自动隐藏简易模式的UI。");
+            ShowPingInNormal = Config.Bind(catAdv, "简易模式显示Ping", true, "在简易模式下方显示本机延迟。");
+            HideOnMenu = Config.Bind(catAdv, "菜单时隐藏", true, "打开ESC菜单时隐藏UI。");
+            EnableDebugLogs = Config.Bind(catAdv, "启用调试日志", false, "在控制台输出详细的网络日志。");
 
-            // Test
-            EnableVirtualTestPlayer = Config.Bind("Testing", "Enable Virtual Player", false, "Add a fake player to UI for testing layout.");
-            TestPlayerName = Config.Bind("Testing", "Virtual Player Name", "TestBot", "Name of the fake player.");
+            // 测试
+            EnableVirtualTestPlayer = Config.Bind("测试选项", "启用虚拟玩家", false, "添加一个假玩家用于测试UI布局。");
+            TestPlayerName = Config.Bind("测试选项", "虚拟玩家名字", "TestBot", "假玩家的名字。");
 
             Harmony.CreateAndPatchAll(typeof(Patches.LoadBalancingClientPatch));
             Harmony.CreateAndPatchAll(typeof(PhotonRPCFix));
 
             VoiceUIManager.CreateGlobalInstance();
 
-            logger.LogInfo($"Better Voice Fix ({MOD_VERSION}) Loaded.");
+            logger.LogInfo($"Better Voice Fix ({MOD_VERSION}) 已加载 - 中文配置版。");
         }
 
         void Update()

@@ -20,7 +20,7 @@ namespace PeakVoiceFix
         public float LastSeenTime;
         public string PlayerName;
         public byte RemoteState;
-        public string ModVersion; // [新增] 存储版本号
+        public string ModVersion; // 版本号存储
     }
 
     public class SOSData
@@ -163,7 +163,6 @@ namespace PeakVoiceFix
             return PhotonNetwork.CurrentRoom.GetPlayer(actorNumber) == null;
         }
 
-        // [新增] 获取幽灵数量 (用于UI统计)
         public static int GetGhostCount()
         {
             if (punVoice == null || punVoice.Client == null || punVoice.Client.CurrentRoom == null) return 0;
@@ -192,9 +191,7 @@ namespace PeakVoiceFix
                 {
                     string msg = $"状态变更: {lastClientState} -> {currentState}";
                     BroadcastLog(msg);
-
                     SendStateSync(currentState);
-
                     if (currentState == ClientState.Joined) ConnectionFailCount = 0;
                     UpdateDataLayer(true);
                     lastClientState = currentState;
@@ -218,7 +215,6 @@ namespace PeakVoiceFix
         public static void SendStateSync(ClientState state)
         {
             byte stateByte = (byte)state;
-            // [修改] 附带版本号
             object[] content = new object[] { TYPE_STATE, stateByte, VoiceFix.MOD_VERSION };
             RaiseEventOptions opts = new RaiseEventOptions { Receivers = ReceiverGroup.Others };
             PhotonNetwork.RaiseEvent(186, content, opts, SendOptions.SendUnreliable);
@@ -483,7 +479,7 @@ namespace PeakVoiceFix
                         if (data[1] is byte s) state = s;
                         else if (data[1] is int s2) state = (byte)s2;
 
-                        // [新增] 解析版本号
+                        // [修复] 解析并存储版本号
                         string ver = "";
                         if (data.Length >= 3 && data[2] is string v) ver = v;
 
