@@ -20,7 +20,7 @@ namespace PeakVoiceFix
         public float LastSeenTime;
         public string PlayerName;
         public byte RemoteState;
-        public string ModVersion; // 版本号存储
+        public string ModVersion;
     }
 
     public class SOSData
@@ -148,12 +148,14 @@ namespace PeakVoiceFix
             return null;
         }
 
-        public static void UpdatePlayerCache(int actorNumber, string name, string ip = null)
+        // [修改] 支持传入 version
+        public static void UpdatePlayerCache(int actorNumber, string name, string ip = null, string version = null)
         {
             if (!PlayerCache.ContainsKey(actorNumber)) PlayerCache[actorNumber] = new CacheEntry();
             bool isNewNameValid = !string.IsNullOrEmpty(name) && name != "Unknown";
             if (isNewNameValid) PlayerCache[actorNumber].PlayerName = name;
             if (!string.IsNullOrEmpty(ip)) PlayerCache[actorNumber].IP = ip;
+            if (!string.IsNullOrEmpty(version)) PlayerCache[actorNumber].ModVersion = version;
             PlayerCache[actorNumber].LastSeenTime = Time.unscaledTime;
         }
 
@@ -240,8 +242,13 @@ namespace PeakVoiceFix
                 lastPingPublishTime = Time.unscaledTime;
                 var props = new ExitGames.Client.Photon.Hashtable();
                 props[PROP_PING] = PhotonNetwork.GetPing();
-                props[PROP_IP] = (punVoice.Client.State == ClientState.Joined) ? punVoice.Client.GameServerAddress : "";
+
+                string myIP = (punVoice.Client.State == ClientState.Joined) ? punVoice.Client.GameServerAddress : "";
+                props[PROP_IP] = myIP;
                 PhotonNetwork.LocalPlayer.SetCustomProperties(props);
+
+                // [新增] 强制更新本机缓存 (包含版本号)，方便 Dump 查看自己
+                UpdatePlayerCache(PhotonNetwork.LocalPlayer.ActorNumber, PhotonNetwork.LocalPlayer.NickName, myIP, VoiceFix.MOD_VERSION);
             }
             if (force) return;
             if (Time.unscaledTime - LastScanTime > SCAN_INTERVAL) { LastScanTime = Time.unscaledTime; ScanPlayers(); }
@@ -479,7 +486,6 @@ namespace PeakVoiceFix
                         if (data[1] is byte s) state = s;
                         else if (data[1] is int s2) state = (byte)s2;
 
-                        // [修复] 解析并存储版本号
                         string ver = "";
                         if (data.Length >= 3 && data[2] is string v) ver = v;
 

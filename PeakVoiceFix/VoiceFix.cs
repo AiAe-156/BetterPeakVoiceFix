@@ -7,15 +7,16 @@ using PeakVoiceFix.Patches;
 
 namespace PeakVoiceFix
 {
-    // [版本] v0.3.3 - UI Refactor & Chinese Configs
-    [BepInPlugin("chuxiaaaa.Aiae.BetterVoiceFix", "BetterVoiceFix", "0.3.3")]
+    // [版本] v0.3.4 - Config UI Update
+    [BepInPlugin("chuxiaaaa.Aiae.BetterVoiceFix", "BetterVoiceFix", "0.3.4")]
     public class VoiceFix : BaseUnityPlugin
     {
         public static VoiceFix Instance;
         public static ManualLogSource logger;
         public static ManualLogSource debugLogger;
 
-        public static ConfigEntry<bool> UIPositionSide;
+        // [修改] 改为 string 类型
+        public static ConfigEntry<string> UIPositionSide;
         public static ConfigEntry<KeyCode> ToggleUIKey;
         public static ConfigEntry<bool> ShowProfessionalInfo;
         public static ConfigEntry<float> OffsetX_Right, OffsetY_Right, OffsetX_Left, OffsetY_Left;
@@ -36,7 +37,7 @@ namespace PeakVoiceFix
         public static ConfigEntry<bool> EnableVirtualTestPlayer;
         public static ConfigEntry<string> TestPlayerName;
 
-        public const string MOD_VERSION = "v0.3.3";
+        public const string MOD_VERSION = "v0.3.4";
 
         void Awake()
         {
@@ -47,7 +48,11 @@ namespace PeakVoiceFix
 
             // --- UI 设置 ---
             string catUI = "UI设置";
-            UIPositionSide = Config.Bind(catUI, "UI位置方向 (Right)", true, "True为右上角，False为左上角。");
+
+            // [修改] 下拉菜单选择：左侧 / 右侧
+            UIPositionSide = Config.Bind(catUI, "UI位置", "右侧",
+                new ConfigDescription("选择UI面板显示在屏幕的哪一侧。", new AcceptableValueList<string>("左侧", "右侧")));
+
             ToggleUIKey = Config.Bind(catUI, "开关快捷键", KeyCode.J, "切换语音面板显示的按键。");
             ShowProfessionalInfo = Config.Bind(catUI, "显示详细IP信息", true, "是否在面板中显示具体的IP地址和调试信息。");
 
@@ -56,7 +61,7 @@ namespace PeakVoiceFix
             OffsetX_Left = Config.Bind(catUI, "左侧边距", 20f, "距离屏幕左边缘的水平距离。");
             OffsetY_Left = Config.Bind(catUI, "顶部边距(左)", 20f, "距离屏幕上边缘的垂直距离。");
 
-            FontSize = Config.Bind(catUI, "字体大小", 18f, "面板文字的基础大小。");
+            FontSize = Config.Bind(catUI, "字体大小", 21f, "面板文字的基础大小。");
             HostSymbol = Config.Bind(catUI, "房主标记符号", "★", "显示在房主名字前的特殊符号。");
 
             // --- 网络设置 ---
@@ -75,16 +80,15 @@ namespace PeakVoiceFix
             HideOnMenu = Config.Bind(catAdv, "菜单时隐藏", true, "打开ESC菜单时隐藏UI。");
             EnableDebugLogs = Config.Bind(catAdv, "启用调试日志", false, "在控制台输出详细的网络日志。");
 
-            // 测试
-            EnableVirtualTestPlayer = Config.Bind("测试选项", "启用虚拟玩家", false, "添加一个假玩家用于测试UI布局。");
-            TestPlayerName = Config.Bind("测试选项", "虚拟玩家名字", "TestBot", "假玩家的名字。");
+            EnableVirtualTestPlayer = Config.Bind(catAdv, "启用虚拟玩家", false, "添加一个假玩家用于测试UI布局。");
+            TestPlayerName = Config.Bind(catAdv, "虚拟玩家名字", "1234567891012141618202224262830323436", "假玩家的名字。");
 
             Harmony.CreateAndPatchAll(typeof(Patches.LoadBalancingClientPatch));
             Harmony.CreateAndPatchAll(typeof(PhotonRPCFix));
 
             VoiceUIManager.CreateGlobalInstance();
 
-            logger.LogInfo($"Better Voice Fix ({MOD_VERSION}) 已加载 - 中文配置版。");
+            logger.LogInfo($"Better Voice Fix ({MOD_VERSION}) 已加载。");
         }
 
         void Update()

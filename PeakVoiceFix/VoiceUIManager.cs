@@ -40,7 +40,6 @@ namespace PeakVoiceFix
         private const string C_TEXT = "#dfdac2";
         private const string C_GREY = "#808080";
         private const string C_GOLD = "#ffd700";
-        // [修改] 用户指定的淡绿色
         private const string C_GHOST_GREEN = "#b2d3b2";
 
         private float nextUiUpdateTime = 0f;
@@ -77,7 +76,6 @@ namespace PeakVoiceFix
             GUILayout.EndScrollView(); GUI.DragWindow(new Rect(0, 0, 10000, 20)); resizeHandleRect = new Rect(debugWindowRect.width - 20, debugWindowRect.height - 20, 20, 20); GUI.Label(resizeHandleRect, "◢"); Event e = Event.current; if (e.type == EventType.MouseDown && resizeHandleRect.Contains(e.mousePosition)) isResizing = true; else if (e.type == EventType.MouseUp) isResizing = false; else if (e.type == EventType.MouseDrag && isResizing) { debugWindowRect.width += e.delta.x; debugWindowRect.height += e.delta.y; if (debugWindowRect.width < 300) debugWindowRect.width = 300; if (debugWindowRect.height < 200) debugWindowRect.height = 200; }
         }
 
-        // [修复] Dump 显示版本号
         private void DumpVoicePlayers()
         {
             if (NetworkManager.punVoice == null || NetworkManager.punVoice.Client == null || NetworkManager.punVoice.Client.CurrentRoom == null) { AddLog("System", "客户端未连接", true); return; }
@@ -108,13 +106,36 @@ namespace PeakVoiceFix
         private void ExportLogs(bool toFile) { StringBuilder sb = new StringBuilder(); sb.AppendLine($"=== Log Export ({DateTime.Now}) ==="); foreach (var log in debugLogs) sb.AppendLine($"[{log.Time}] {log.Player}: {log.Msg}"); if (toFile) { string path = Path.Combine(Paths.BepInExRootPath, "Log", "BetterVoiceFix_Dump.txt"); try { File.WriteAllText(path, sb.ToString()); AddLog("System", $"已导出: {path}", true); } catch (Exception ex) { AddLog("System", $"失败: {ex.Message}", true); } } else { GUIUtility.systemCopyBuffer = sb.ToString(); AddLog("System", "已复制", true); } }
         void Update() { if (VoiceFix.ToggleUIKey == null) return; if (Input.GetKeyDown(VoiceFix.ToggleUIKey.Value)) { if (isDetailMode) { isDetailMode = false; detailModeExpiry = 0f; } else { isDetailMode = true; detailModeExpiry = Time.unscaledTime + 10f; } } if ((Input.GetKey(KeyCode.LeftAlt) || Input.GetKey(KeyCode.RightAlt)) && Input.GetKeyDown(KeyCode.J)) showDebugConsole = !showDebugConsole; if (isDetailMode && Time.unscaledTime > detailModeExpiry) isDetailMode = false; string scene = SceneManager.GetActiveScene().name; bool inAirport = (scene == "Airport"); bool inRoom = PhotonNetwork.InRoom; bool isMenuOpen = VoiceFix.HideOnMenu != null && VoiceFix.HideOnMenu.Value && Cursor.visible; bool shouldShow = false; if (inRoom && !isMenuOpen) { if (isDetailMode) shouldShow = true; else { bool hasNotification = Time.unscaledTime < notificationExpiry; if (inAirport || hasNotification) shouldShow = true; } } if (myCanvas.enabled != shouldShow) myCanvas.enabled = shouldShow; if (!shouldShow) return; bool isBadFont = statsText.font == null || statsText.font.name.Contains("Liberation"); if (isBadFont || Time.unscaledTime - lastFontRetryTime > 2f) { lastFontRetryTime = Time.unscaledTime; TrySyncFontFromGame(); } if (Time.unscaledTime > nextUiUpdateTime) { if (isDetailMode) UpdateContent_Detail(); else UpdateContent_Normal(); UpdateLayout(); nextUiUpdateTime = Time.unscaledTime + 0.2f; } }
         public bool IsDetailModeActive() => isDetailMode;
-        private void UpdateLayout() { if (statsText == null || VoiceFix.UIPositionSide == null) return; bool isRight = VoiceFix.UIPositionSide.Value; float targetX = isRight ? Mathf.Abs(VoiceFix.OffsetX_Right.Value) : Mathf.Abs(VoiceFix.OffsetX_Left.Value); float targetY = isRight ? Mathf.Abs(VoiceFix.OffsetY_Right.Value) : Mathf.Abs(VoiceFix.OffsetY_Left.Value); RectTransform rt = statsText.rectTransform; if (isRight) { rt.anchorMin = new Vector2(1, 1); rt.anchorMax = new Vector2(1, 1); rt.pivot = new Vector2(1, 1); rt.anchoredPosition = new Vector2(-targetX, -targetY); statsText.alignment = TextAlignmentOptions.TopLeft; } else { rt.anchorMin = new Vector2(0, 1); rt.anchorMax = new Vector2(0, 1); rt.pivot = new Vector2(0, 1); rt.anchoredPosition = new Vector2(targetX, -targetY); statsText.alignment = TextAlignmentOptions.TopLeft; } statsText.fontSize = VoiceFix.FontSize.Value; }
+
+        // [修改] 适配 string 类型的配置
+        private void UpdateLayout()
+        {
+            if (statsText == null || VoiceFix.UIPositionSide == null) return;
+
+            // 判断字符串是否为 "右侧"
+            bool isRight = (VoiceFix.UIPositionSide.Value == "右侧");
+
+            float targetX = isRight ? Mathf.Abs(VoiceFix.OffsetX_Right.Value) : Mathf.Abs(VoiceFix.OffsetX_Left.Value);
+            float targetY = isRight ? Mathf.Abs(VoiceFix.OffsetY_Right.Value) : Mathf.Abs(VoiceFix.OffsetY_Left.Value);
+            RectTransform rt = statsText.rectTransform;
+            if (isRight)
+            {
+                rt.anchorMin = new Vector2(1, 1); rt.anchorMax = new Vector2(1, 1); rt.pivot = new Vector2(1, 1);
+                rt.anchoredPosition = new Vector2(-targetX, -targetY); statsText.alignment = TextAlignmentOptions.TopLeft;
+            }
+            else
+            {
+                rt.anchorMin = new Vector2(0, 1); rt.anchorMax = new Vector2(0, 1); rt.pivot = new Vector2(0, 1);
+                rt.anchoredPosition = new Vector2(targetX, -targetY); statsText.alignment = TextAlignmentOptions.TopLeft;
+            }
+            statsText.fontSize = VoiceFix.FontSize.Value;
+        }
+
         public void TriggerNotification(string playerName) { notificationMsg = $"<color={C_TEXT}>{playerName}:</color> {FormatStatusTag("连接断开", C_YELLOW)}"; notificationExpiry = Time.unscaledTime + 5f; }
         public void ShowStatsTemporary() { notificationMsg = $"<color={C_YELLOW}>[系统] 手动操作...</color>"; notificationExpiry = Time.unscaledTime + 5f; }
         private string GetLocalizedState(ClientState state) { switch (state) { case ClientState.Joined: return "已连接"; case ClientState.Disconnected: return "已断开"; default: return state.ToString(); } }
         private string GetMyStateRaw(out string color) { int voicePlayerCount = 0; int total = 0; GetVoiceCounts(out voicePlayerCount, out total); if (IsVoiceConnected()) { if (voicePlayerCount > 1) { color = C_GREEN; return "同步"; } if (voicePlayerCount == 1 && PhotonNetwork.CurrentRoom.PlayerCount > 1) { color = C_YELLOW; return "孤立"; } color = C_GREEN; return "同步"; } if (IsConnectingLocal()) { color = C_YELLOW; return "连接中"; } color = C_RED; return "断开"; }
 
-        // [重构] 核心显示逻辑
         private void AppendCommonStats(StringBuilder sb, bool forceShow)
         {
             bool isSinglePlayer = PhotonNetwork.OfflineMode || (PhotonNetwork.CurrentRoom != null && PhotonNetwork.CurrentRoom.MaxPlayers == 1);
@@ -135,25 +156,21 @@ namespace PeakVoiceFix
                     GetVoiceCounts(out realJoined, out total);
                     int ghostCount = NetworkManager.GetGhostCount();
 
-                    // [重构] 格式: 8(黄)+2(淡绿)/10(绿) (2人ID错位)
+                    int n = NetworkManager.punVoice.Client.CurrentRoom.Players.Count;
+                    int N = total;
+
                     sb.Append($"<color={C_TEXT}>语音连接人数：</color>");
 
-                    // 8
-                    sb.Append($"<color={C_YELLOW}>{realJoined}</color>");
+                    string nColor = C_YELLOW;
+                    if (n == 1 && N >= 3) nColor = C_RED;
+                    else if (ghostCount > 0) nColor = C_GHOST_GREEN;
+                    else if (n == N) nColor = C_GREEN;
+
+                    sb.Append($"<color={nColor}>{n}</color>");
+                    sb.Append($"<color={C_TEXT}>/</color><color={C_TEXT}>{N}</color>");
 
                     if (ghostCount > 0)
                     {
-                        // +2
-                        sb.Append($"<color={C_TEXT}>+</color>");
-                        sb.Append($"<color={C_GHOST_GREEN}>{ghostCount}</color>");
-                    }
-
-                    // /10
-                    sb.Append($"<color={C_TEXT}>/</color><color={C_GREEN}>{total}</color>");
-
-                    if (ghostCount > 0)
-                    {
-                        // (2 人ID错位)
                         sb.Append($" <color={C_TEXT}>(</color><color={C_GHOST_GREEN}>{ghostCount}</color><color={C_TEXT}> 人ID错位)</color>");
                     }
                     sb.Append("\n");
@@ -168,7 +185,9 @@ namespace PeakVoiceFix
         private void UpdateContent_Detail()
         {
             StringBuilder sb = new StringBuilder(); bool proMode = VoiceFix.ShowProfessionalInfo.Value; float alignX = VoiceFix.LatencyOffset.Value;
-            sb.Append($"<align=\"center\"><size=120%><color={C_TEXT}>语音详细状态 (v0.3.3)</color></size></align>\n");
+
+            // [修改] 版本号 v0.3.4
+            sb.Append($"<align=\"center\"><size=120%><color={C_TEXT}>语音详细状态 (v0.3.4)</color></size></align>\n");
             sb.Append($"<align=\"center\"><color={C_TEXT}>------------------</color></align>\n");
             string myIP = GetCurrentIP(); string myColor; string myStateRaw = GetMyStateRaw(out myColor);
             sb.Append($"<size=75%><color={C_TEXT}>本机IP:</color> "); if (PhotonNetwork.IsMasterClient && IsVoiceConnected()) { } else { string myStateText = FormatStatusTag(myStateRaw, myColor); sb.Append($"{myStateText} "); }
@@ -206,7 +225,6 @@ namespace PeakVoiceFix
             renderList.Sort((a, b) => { return b.IsLocal.CompareTo(a.IsLocal); });
             sb.Append($"<line-height=105%>"); foreach (var d in renderList) BuildPlayerEntry(sb, d.Name, d.IP, d.Ping, d.IsLocal, d.IsHost, proMode, alignX, d.IsAlive, d.HasModData, d.IsInVoiceRoom, ghostCount > 0, d.ActorNumber, d.RemoteState); sb.Append("</line-height>");
 
-            // [重构] 底部不再显示单独的错位行，而是使用顶部合并的计数器
             sb.Append($"<align=\"center\"><color={C_TEXT}>------------------</color></align>\n");
             AppendCommonStats(sb, true);
 
@@ -215,9 +233,8 @@ namespace PeakVoiceFix
             statsText.text = sb.ToString();
         }
 
+        // ... (其余方法保持不变)
         private string GetClientStateLocalized(ClientState state) { switch (state) { case ClientState.PeerCreated: return "初始化中..."; case ClientState.Authenticating: return "验证中..."; case ClientState.Authenticated: return "已验证"; case ClientState.Joining: return "加入中..."; case ClientState.Joined: return "已连接"; case ClientState.Disconnecting: return "断开中..."; case ClientState.Disconnected: return "断开"; case ClientState.ConnectingToGameServer: return "连接到游戏服务器中..."; case ClientState.ConnectingToMasterServer: return "连接到主服务器中..."; case ClientState.ConnectingToNameServer: return "连接到名称服务器中..."; default: return state.ToString(); } }
-
-        // [修复] 将错位状态的颜色改为 C_GHOST_GREEN (#b2d3b2)
         private void BuildPlayerEntry(StringBuilder sb, string name, string ip, int ping, bool isLocal, bool isHost, bool pro, float alignX, bool isAlive, bool hasModData, bool isInVoiceRoom, bool hasGhosts, int actorNumber = -1, byte remoteState = 0)
         {
             int prefixWeight = 0;
@@ -234,7 +251,7 @@ namespace PeakVoiceFix
                         if (Time.unscaledTime - joinTimes[actorNumber] < 25f) { statusLabel = "连接中"; statusColor = C_YELLOW; }
                         else
                         {
-                            if (hasGhosts) { statusLabel = "错位"; statusColor = C_GHOST_GREEN; } // 使用淡绿色
+                            if (hasGhosts) { statusLabel = "错位"; statusColor = C_GHOST_GREEN; }
                             else { statusLabel = "断开"; statusColor = C_RED; }
                         }
                     }
@@ -258,10 +275,9 @@ namespace PeakVoiceFix
             else if (pro && isLocal && isConnecting) { string localState = "连接中..."; if (NetworkManager.punVoice != null && NetworkManager.punVoice.Client != null) localState = GetClientStateLocalized(NetworkManager.punVoice.Client.State); sb.Append($"<voffset=0.17em><size=80%><color={C_TEXT}>  » {localState}</color></size></voffset>\n"); }
         }
 
-        // [修复] 返回两个独立的计数：有效连接数 和 幽灵数
-        private void GetVoiceCounts(out int realJoined, out int total)
+        private void GetVoiceCounts(out int joined, out int total)
         {
-            realJoined = 0; total = 0;
+            joined = 0; total = 0;
             if (PhotonNetwork.PlayerList != null)
             {
                 total = PhotonNetwork.PlayerList.Length;
@@ -269,12 +285,12 @@ namespace PeakVoiceFix
                 {
                     foreach (var id in NetworkManager.punVoice.Client.CurrentRoom.Players.Keys)
                     {
-                        if (!NetworkManager.IsGhost(id)) realJoined++;
+                        if (!NetworkManager.IsGhost(id)) joined++;
                     }
                 }
                 else
                 {
-                    foreach (var p in PhotonNetwork.PlayerList) { if (p.IsLocal) { if (IsVoiceConnected()) realJoined++; } else if (NetworkManager.PlayerCache.TryGetValue(p.ActorNumber, out var c) && !string.IsNullOrEmpty(c.IP)) realJoined++; }
+                    foreach (var p in PhotonNetwork.PlayerList) { if (p.IsLocal) { if (IsVoiceConnected()) joined++; } else if (NetworkManager.PlayerCache.TryGetValue(p.ActorNumber, out var c) && !string.IsNullOrEmpty(c.IP)) joined++; }
                 }
             }
         }
