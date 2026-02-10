@@ -1,0 +1,9 @@
+{
+    "name": "BetterVoiceFix",
+    "version_number": "1.0.0",
+    "website_url": "",
+    "description": "Fixes voice connection issues with auto-reconnect, host synchronization, and a visual status overlay./n修复了语音连接问题，新增了自动重连、主机同步以及可视化状态显示功能。",
+    "dependencies": [
+        "BepInEx-BepInExPack-5.4.2100"
+    ]
+}

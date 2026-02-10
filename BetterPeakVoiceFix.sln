@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 18
+VisualStudioVersion = 18.2.11415.280 d18.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BetterPeakVoiceFix", "PeakVoiceFix\BetterPeakVoiceFix.csproj", "{1F8809E0-D1E4-4805-B143-161CF34113E6}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{1F8809E0-D1E4-4805-B143-161CF34113E6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1F8809E0-D1E4-4805-B143-161CF34113E6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1F8809E0-D1E4-4805-B143-161CF34113E6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1F8809E0-D1E4-4805-B143-161CF34113E6}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {455806D7-5466-4A07-8675-9BB24FB4CD26}
+	EndGlobalSection
+EndGlobal
