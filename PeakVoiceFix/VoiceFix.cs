@@ -7,8 +7,8 @@ using PeakVoiceFix.Patches;
 
 namespace PeakVoiceFix
 {
-    // [版本] v0.3.4 - Config UI Update
-    [BepInPlugin("chuxiaaaa.Aiae.BetterVoiceFix", "BetterVoiceFix", "0.3.4")]
+    // [版本] v0.3.5 - Config UI Update
+    [BepInPlugin("chuxiaaaa.Aiae.BetterVoiceFix", "BetterVoiceFixCN", "0.3.5")]
     public class VoiceFix : BaseUnityPlugin
     {
         public static VoiceFix Instance;
@@ -37,7 +37,7 @@ namespace PeakVoiceFix
         public static ConfigEntry<bool> EnableVirtualTestPlayer;
         public static ConfigEntry<string> TestPlayerName;
 
-        public const string MOD_VERSION = "v0.3.4";
+        public const string MOD_VERSION = "v0.3.5";
 
         void Awake()
         {
@@ -54,7 +54,7 @@ namespace PeakVoiceFix
                 new ConfigDescription("选择UI面板显示在屏幕的哪一侧。", new AcceptableValueList<string>("左侧", "右侧")));
 
             ToggleUIKey = Config.Bind(catUI, "开关快捷键", KeyCode.J, "切换语音面板显示的按键。");
-            ShowProfessionalInfo = Config.Bind(catUI, "显示详细IP信息", true, "是否在面板中显示具体的IP地址和调试信息。");
+            ShowProfessionalInfo = Config.Bind(catUI, "显示连接到的语音服务器IP和详细信息", false, "是否在面板中显示具体的已连接语音服务器IP地址和调试信息。");
 
             OffsetX_Right = Config.Bind(catUI, "右侧边距", 20f, "距离屏幕右边缘的水平距离。");
             OffsetY_Right = Config.Bind(catUI, "顶部边距(右)", 20f, "距离屏幕上边缘的垂直距离。");
@@ -77,7 +77,7 @@ namespace PeakVoiceFix
             LatencyOffset = Config.Bind(catAdv, "延迟对齐偏移量", 350f, "Ping值显示的水平像素偏移。");
             AutoHideNormal = Config.Bind(catAdv, "自动隐藏简易UI", true, "当所有人连接正常时，自动隐藏简易模式的UI。");
             ShowPingInNormal = Config.Bind(catAdv, "简易模式显示Ping", true, "在简易模式下方显示本机延迟。");
-            HideOnMenu = Config.Bind(catAdv, "菜单时隐藏", true, "打开ESC菜单时隐藏UI。");
+            HideOnMenu = Config.Bind(catAdv, "ESC菜单界面时隐藏", true, "打开ESC菜单时隐藏UI。");
             EnableDebugLogs = Config.Bind(catAdv, "启用调试日志", false, "在控制台输出详细的网络日志。");
 
             EnableVirtualTestPlayer = Config.Bind(catAdv, "启用虚拟玩家", false, "添加一个假玩家用于测试UI布局。");

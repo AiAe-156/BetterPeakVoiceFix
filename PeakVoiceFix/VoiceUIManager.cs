@@ -186,13 +186,13 @@ namespace PeakVoiceFix
         {
             StringBuilder sb = new StringBuilder(); bool proMode = VoiceFix.ShowProfessionalInfo.Value; float alignX = VoiceFix.LatencyOffset.Value;
 
-            // [修改] 版本号 v0.3.4
-            sb.Append($"<align=\"center\"><size=120%><color={C_TEXT}>语音详细状态 (v0.3.4)</color></size></align>\n");
+            // [修改] 版本号 v0.3.5
+            sb.Append($"<align=\"center\"><size=120%><color={C_TEXT}>语音详细状态 (v0.3.5)</color></size></align>\n");
             sb.Append($"<align=\"center\"><color={C_TEXT}>------------------</color></align>\n");
             string myIP = GetCurrentIP(); string myColor; string myStateRaw = GetMyStateRaw(out myColor);
-            sb.Append($"<size=75%><color={C_TEXT}>本机IP:</color> "); if (PhotonNetwork.IsMasterClient && IsVoiceConnected()) { } else { string myStateText = FormatStatusTag(myStateRaw, myColor); sb.Append($"{myStateText} "); }
+            sb.Append($"<size=75%><color={C_TEXT}>本机已连服务器:</color> "); if (PhotonNetwork.IsMasterClient && IsVoiceConnected()) { } else { string myStateText = FormatStatusTag(myStateRaw, myColor); sb.Append($"{myStateText} "); }
             if (proMode) sb.Append($" <color={C_TEXT}>{myIP}</color>"); sb.Append("\n");
-            sb.Append($"<color={C_TEXT}>房主IP:</color> ");
+            sb.Append($"<color={C_TEXT}>房主已连服务器:</color> ");
             if (PhotonNetwork.IsMasterClient)
             {
                 int joined, total; GetVoiceCounts(out joined, out total); int abnormal = total - joined; if (abnormal < 0) abnormal = 0;
@@ -229,7 +229,7 @@ namespace PeakVoiceFix
             AppendCommonStats(sb, true);
 
             if (NetworkManager.ActiveSOSList.Count > 0) { sb.Append($"<align=\"center\"><color={C_TEXT}>------------------</color></align>\n"); sb.Append($"<color={C_YELLOW}>[SOS快照]</color>\n"); string majIP = GetMajorityIP(out int majCnt); string hostStatus = (PhotonNetwork.IsMasterClient || IsIPMatch(majIP)) ? "同步" : majIP; sb.Append($"<size=80%><color={C_TEXT}>多数派: {majIP} ({majCnt}人)</color></size>\n"); foreach (var sos in NetworkManager.ActiveSOSList) { sb.Append($"<size=80%><color={C_RED}>检测到 {sos.PlayerName} 掉线</color></size>\n"); string lastIP = string.IsNullOrEmpty(sos.OriginIP) ? "未知" : sos.OriginIP; sb.Append($"  <size=80%><color={C_TEXT}>目标: ({sos.TargetIP}) | 上次: {lastIP}</color></size>\n"); } }
-            if (proMode) { sb.Append($"<align=\"center\"><color={C_TEXT}>------------------</color></align>\n"); string majIP = GetMajorityIP(out int cnt); float ago = Time.unscaledTime - NetworkManager.LastScanTime; sb.Append($"<size=80%><color={C_TEXT}>[缓存快照] ({ago:F0}秒前)</color>\n"); sb.Append($"<color={C_TEXT}>多数派:</color> <color={C_TEXT}>{majIP}</color> <color={C_TEXT}>({cnt}人)</color>\n"); var groups = NetworkManager.PlayerCache.GroupBy(x => x.Value.IP); foreach (var g in groups) { if (g.Key == majIP) continue; string ipLabel = string.IsNullOrEmpty(g.Key) ? "未连接" : g.Key; var names = g.Select(x => x.Value.PlayerName).Take(3); string nameList = string.Join(",", names); sb.Append($"<color={C_TEXT}> - {ipLabel}: {nameList}</color>\n"); } if (NetworkManager.HostHistory.Count > 0) sb.Append($"<color={C_TEXT}>[历史]</color> {NetworkManager.HostHistory[NetworkManager.HostHistory.Count - 1]}\n"); sb.Append("</size>"); }
+            if (proMode) { sb.Append($"<align=\"center\"><color={C_TEXT}>------------------</color></align>\n"); string majIP = GetMajorityIP(out int cnt); float ago = Time.unscaledTime - NetworkManager.LastScanTime; sb.Append($"<size=80%><color={C_TEXT}>[缓存快照] ({ago:F0}秒前)</color>\n"); sb.Append($"<color={C_TEXT}>多数派服务器:</color> <color={C_TEXT}>{majIP}</color> <color={C_TEXT}>({cnt}人)</color>\n"); var groups = NetworkManager.PlayerCache.GroupBy(x => x.Value.IP); foreach (var g in groups) { if (g.Key == majIP) continue; string ipLabel = string.IsNullOrEmpty(g.Key) ? "未连接" : g.Key; var names = g.Select(x => x.Value.PlayerName).Take(3); string nameList = string.Join(",", names); sb.Append($"<color={C_TEXT}> - {ipLabel}: {nameList}</color>\n"); } if (NetworkManager.HostHistory.Count > 0) sb.Append($"<color={C_TEXT}>[历史]</color> {NetworkManager.HostHistory[NetworkManager.HostHistory.Count - 1]}\n"); sb.Append("</size>"); }
             statsText.text = sb.ToString();
         }
 
@@ -270,7 +270,7 @@ namespace PeakVoiceFix
             {
                 string ipLabel = ip; string statePrefix = "已连接";
                 if (remoteState != 0 && (ClientState)remoteState != ClientState.Joined && (ClientState)remoteState != ClientState.Disconnected) { ipLabel = GetClientStateLocalized((ClientState)remoteState); statePrefix = "状态"; sb.Append($"<voffset=0.17em><size=80%><color={C_TEXT}>  » {ipLabel}</color></size></voffset>\n"); }
-                else { string lbl = isConnecting ? "(等待数据...)" : (string.IsNullOrEmpty(ip) ? "N/A" : ip); if (isConnecting && string.IsNullOrEmpty(ip)) lbl = "<color=grey>获取中...</color>"; string pfx = isConnecting ? "正在连接" : "已连接"; sb.Append($"<voffset=0.17em><size=80%><color={C_TEXT}>  » {pfx}: {lbl}</color></size></voffset>\n"); }
+                else { string lbl = isConnecting ? "(等待数据...)" : (string.IsNullOrEmpty(ip) ? "N/A" : ip); if (isConnecting && string.IsNullOrEmpty(ip)) lbl = "<color=grey>获取中...</color>"; string pfx = isConnecting ? "正在连接" : "已连入语音服"; sb.Append($"<voffset=0.17em><size=80%><color={C_TEXT}>  » {pfx}: {lbl}</color></size></voffset>\n"); }
             }
             else if (pro && isLocal && isConnecting) { string localState = "连接中..."; if (NetworkManager.punVoice != null && NetworkManager.punVoice.Client != null) localState = GetClientStateLocalized(NetworkManager.punVoice.Client.State); sb.Append($"<voffset=0.17em><size=80%><color={C_TEXT}>  » {localState}</color></size></voffset>\n"); }
         }
