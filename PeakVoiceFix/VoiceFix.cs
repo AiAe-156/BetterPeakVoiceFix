@@ -7,8 +7,8 @@ using PeakVoiceFix.Patches;
 
 namespace PeakVoiceFix
 {
-    // [版本] v0.3.5 - Config UI Update
-    [BepInPlugin("chuxiaaaa.Aiae.BetterVoiceFix", "BetterVoiceFixCN", "0.3.5")]
+    // [版本] v0.3.6 - Config UI Update
+    [BepInPlugin("chuxiaaaa.Aiae.BetterVoiceFix", "BetterVoiceFixCN", "0.3.6")]
     public class VoiceFix : BaseUnityPlugin
     {
         public static VoiceFix Instance;
@@ -37,7 +37,7 @@ namespace PeakVoiceFix
         public static ConfigEntry<bool> EnableVirtualTestPlayer;
         public static ConfigEntry<string> TestPlayerName;
 
-        public const string MOD_VERSION = "v0.3.5";
+        public const string MOD_VERSION = "v0.3.6";
 
         void Awake()
         {

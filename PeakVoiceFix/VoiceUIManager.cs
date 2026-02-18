@@ -52,8 +52,37 @@ namespace PeakVoiceFix
         private float singlePlayerEnterTime = 0f;
         private class PlayerRenderData { public string Name; public string IP; public int Ping; public bool IsLocal; public bool IsHost; public bool IsAlive; public bool HasModData; public bool IsInVoiceRoom; public int ActorNumber; public byte RemoteState; }
 
-        public static void CreateGlobalInstance() { if (Instance != null) return; GameObject go = new GameObject("BetterVoiceFix_UI"); DontDestroyOnLoad(go); Canvas c = go.AddComponent<Canvas>(); c.renderMode = RenderMode.ScreenSpaceOverlay; c.sortingOrder = 9999; CanvasScaler scaler = go.AddComponent<CanvasScaler>(); scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize; scaler.referenceResolution = new Vector2(1920, 1080); Instance = go.AddComponent<VoiceUIManager>(); Instance.myCanvas = c; Instance.InitText(); }
-        private void InitText() { GameObject tObj = new GameObject("StatusText"); tObj.transform.SetParent(transform, false); ContentSizeFitter fitter = tObj.AddComponent<ContentSizeFitter>(); fitter.horizontalFit = ContentSizeFitter.FitMode.PreferredSize; fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize; statsText = tObj.AddComponent<TextMeshProUGUI>(); statsText.richText = true; statsText.raycastTarget = false; statsText.overflowMode = TextOverflowModes.Overflow; statsText.textWrappingMode = TextWrappingModes.NoWrap; UpdateLayout(); TrySyncFontFromGame(); }
+        public static void CreateGlobalInstance()
+        {
+            if (Instance != null) return;
+            GameObject go = new GameObject("BetterVoiceFix_UI");
+            DontDestroyOnLoad(go);
+            Canvas c = go.AddComponent<Canvas>();
+            c.renderMode = RenderMode.ScreenSpaceOverlay;
+            c.sortingOrder = 9999;
+            CanvasScaler scaler = go.AddComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1920, 1080);
+            Instance = go.AddComponent<VoiceUIManager>();
+            Instance.myCanvas = c;
+            Instance.InitText();
+        }
+
+        private void InitText()
+        {
+            GameObject tObj = new GameObject("StatusText");
+            tObj.transform.SetParent(transform, false);
+            ContentSizeFitter fitter = tObj.AddComponent<ContentSizeFitter>();
+            fitter.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
+            fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+            statsText = tObj.AddComponent<TextMeshProUGUI>();
+            statsText.richText = true;
+            statsText.raycastTarget = false;
+            statsText.overflowMode = TextOverflowModes.Overflow;
+            statsText.textWrappingMode = TextWrappingModes.NoWrap;
+            UpdateLayout();
+            TrySyncFontFromGame();
+        }
         public void AddLog(string player, string msg, bool isLocal) { if (debugLogs.Count > 300) debugLogs.RemoveAt(0); debugLogs.Add(new LogEntry { Time = DateTime.Now.ToString("HH:mm:ss"), Player = player, Msg = msg, IsLocal = isLocal }); debugScrollPosition.y = float.MaxValue; }
 
         void OnGUI() { if (showDebugConsole) { GUI.skin.window.normal.background = Texture2D.blackTexture; GUI.backgroundColor = new Color(0, 0, 0, 0.85f); debugWindowRect = GUI.Window(999, debugWindowRect, DrawDebugWindow, "语音修复调试控制台 (Alt+J) | EvCode:186"); } }
@@ -104,7 +133,73 @@ namespace PeakVoiceFix
         }
 
         private void ExportLogs(bool toFile) { StringBuilder sb = new StringBuilder(); sb.AppendLine($"=== Log Export ({DateTime.Now}) ==="); foreach (var log in debugLogs) sb.AppendLine($"[{log.Time}] {log.Player}: {log.Msg}"); if (toFile) { string path = Path.Combine(Paths.BepInExRootPath, "Log", "BetterVoiceFix_Dump.txt"); try { File.WriteAllText(path, sb.ToString()); AddLog("System", $"已导出: {path}", true); } catch (Exception ex) { AddLog("System", $"失败: {ex.Message}", true); } } else { GUIUtility.systemCopyBuffer = sb.ToString(); AddLog("System", "已复制", true); } }
-        void Update() { if (VoiceFix.ToggleUIKey == null) return; if (Input.GetKeyDown(VoiceFix.ToggleUIKey.Value)) { if (isDetailMode) { isDetailMode = false; detailModeExpiry = 0f; } else { isDetailMode = true; detailModeExpiry = Time.unscaledTime + 10f; } } if ((Input.GetKey(KeyCode.LeftAlt) || Input.GetKey(KeyCode.RightAlt)) && Input.GetKeyDown(KeyCode.J)) showDebugConsole = !showDebugConsole; if (isDetailMode && Time.unscaledTime > detailModeExpiry) isDetailMode = false; string scene = SceneManager.GetActiveScene().name; bool inAirport = (scene == "Airport"); bool inRoom = PhotonNetwork.InRoom; bool isMenuOpen = VoiceFix.HideOnMenu != null && VoiceFix.HideOnMenu.Value && Cursor.visible; bool shouldShow = false; if (inRoom && !isMenuOpen) { if (isDetailMode) shouldShow = true; else { bool hasNotification = Time.unscaledTime < notificationExpiry; if (inAirport || hasNotification) shouldShow = true; } } if (myCanvas.enabled != shouldShow) myCanvas.enabled = shouldShow; if (!shouldShow) return; bool isBadFont = statsText.font == null || statsText.font.name.Contains("Liberation"); if (isBadFont || Time.unscaledTime - lastFontRetryTime > 2f) { lastFontRetryTime = Time.unscaledTime; TrySyncFontFromGame(); } if (Time.unscaledTime > nextUiUpdateTime) { if (isDetailMode) UpdateContent_Detail(); else UpdateContent_Normal(); UpdateLayout(); nextUiUpdateTime = Time.unscaledTime + 0.2f; } }
+        void Update()
+        {
+            if (VoiceFix.ToggleUIKey == null) return;
+
+            // 快捷键处理
+            if (Input.GetKeyDown(VoiceFix.ToggleUIKey.Value))
+            {
+                if (isDetailMode) { isDetailMode = false; detailModeExpiry = 0f; }
+                else { isDetailMode = true; detailModeExpiry = Time.unscaledTime + 10f; }
+            }
+            if ((Input.GetKey(KeyCode.LeftAlt) || Input.GetKey(KeyCode.RightAlt)) && Input.GetKeyDown(KeyCode.J))
+                showDebugConsole = !showDebugConsole;
+
+            // 详细模式超时自动关闭
+            if (isDetailMode && Time.unscaledTime > detailModeExpiry)
+                isDetailMode = false;
+
+            // 定期清理 joinTimes（每60秒一次）
+            CleanupJoinTimes();
+
+            // 判断是否应该显示 UI
+            string scene = SceneManager.GetActiveScene().name;
+            bool inAirport = (scene == "Airport");
+            bool inRoom = PhotonNetwork.InRoom;
+            bool isMenuOpen = VoiceFix.HideOnMenu != null && VoiceFix.HideOnMenu.Value && Cursor.visible;
+            bool shouldShow = false;
+
+            if (inRoom && !isMenuOpen)
+            {
+                if (isDetailMode)
+                    shouldShow = true;
+                else
+                {
+                    bool hasNotification = Time.unscaledTime < notificationExpiry;
+
+                    // AutoHideNormal：当所有人连接正常时，自动隐藏简易模式 UI
+                    bool autoHide = VoiceFix.AutoHideNormal != null && VoiceFix.AutoHideNormal.Value && IsAllGood();
+
+                    if (inAirport || hasNotification)
+                    {
+                        if (!autoHide || hasNotification)
+                            shouldShow = true;
+                    }
+                }
+            }
+
+            if (myCanvas.enabled != shouldShow)
+                myCanvas.enabled = shouldShow;
+            if (!shouldShow) return;
+
+            // 字体同步
+            bool isBadFont = statsText.font == null || statsText.font.name.Contains("Liberation");
+            if (isBadFont || Time.unscaledTime - lastFontRetryTime > 2f)
+            {
+                lastFontRetryTime = Time.unscaledTime;
+                TrySyncFontFromGame();
+            }
+
+            // 定时更新 UI 内容
+            if (Time.unscaledTime > nextUiUpdateTime)
+            {
+                if (isDetailMode) UpdateContent_Detail();
+                else UpdateContent_Normal();
+                UpdateLayout();
+                nextUiUpdateTime = Time.unscaledTime + 0.2f;
+            }
+        }
         public bool IsDetailModeActive() => isDetailMode;
 
         // [修改] 适配 string 类型的配置
@@ -134,7 +229,20 @@ namespace PeakVoiceFix
         public void TriggerNotification(string playerName) { notificationMsg = $"<color={C_TEXT}>{playerName}:</color> {FormatStatusTag("连接断开", C_YELLOW)}"; notificationExpiry = Time.unscaledTime + 5f; }
         public void ShowStatsTemporary() { notificationMsg = $"<color={C_YELLOW}>[系统] 手动操作...</color>"; notificationExpiry = Time.unscaledTime + 5f; }
         private string GetLocalizedState(ClientState state) { switch (state) { case ClientState.Joined: return "已连接"; case ClientState.Disconnected: return "已断开"; default: return state.ToString(); } }
-        private string GetMyStateRaw(out string color) { int voicePlayerCount = 0; int total = 0; GetVoiceCounts(out voicePlayerCount, out total); if (IsVoiceConnected()) { if (voicePlayerCount > 1) { color = C_GREEN; return "同步"; } if (voicePlayerCount == 1 && PhotonNetwork.CurrentRoom.PlayerCount > 1) { color = C_YELLOW; return "孤立"; } color = C_GREEN; return "同步"; } if (IsConnectingLocal()) { color = C_YELLOW; return "连接中"; } color = C_RED; return "断开"; }
+        private string GetMyStateRaw(out string color)
+        {
+            int voicePlayerCount = 0; int total = 0;
+            GetVoiceCounts(out voicePlayerCount, out total);
+            if (IsVoiceConnected())
+            {
+                if (voicePlayerCount > 1) { color = C_GREEN; return "同步"; }
+                if (voicePlayerCount == 1 && PhotonNetwork.CurrentRoom != null && PhotonNetwork.CurrentRoom.PlayerCount > 1)
+                { color = C_YELLOW; return "孤立"; }
+                color = C_GREEN; return "同步";
+            }
+            if (IsConnectingLocal()) { color = C_YELLOW; return "连接中"; }
+            color = C_RED; return "断开";
+        }
 
         private void AppendCommonStats(StringBuilder sb, bool forceShow)
         {
@@ -156,7 +264,13 @@ namespace PeakVoiceFix
                     GetVoiceCounts(out realJoined, out total);
                     int ghostCount = NetworkManager.GetGhostCount();
 
-                    int n = NetworkManager.punVoice.Client.CurrentRoom.Players.Count;
+                    // 修复: 添加 CurrentRoom 空检查，防止 NullReferenceException
+                    int n = realJoined + ghostCount;
+                    if (NetworkManager.punVoice != null && NetworkManager.punVoice.Client != null
+                        && NetworkManager.punVoice.Client.CurrentRoom != null)
+                    {
+                        n = NetworkManager.punVoice.Client.CurrentRoom.Players.Count;
+                    }
                     int N = total;
 
                     sb.Append($"<color={C_TEXT}>语音连接人数：</color>");
@@ -186,8 +300,8 @@ namespace PeakVoiceFix
         {
             StringBuilder sb = new StringBuilder(); bool proMode = VoiceFix.ShowProfessionalInfo.Value; float alignX = VoiceFix.LatencyOffset.Value;
 
-            // [修改] 版本号 v0.3.5
-            sb.Append($"<align=\"center\"><size=120%><color={C_TEXT}>语音详细状态 (v0.3.5)</color></size></align>\n");
+            // [修改] 版本号 v0.3.6
+            sb.Append($"<align=\"center\"><size=120%><color={C_TEXT}>语音详细状态 (v0.3.6)</color></size></align>\n");
             sb.Append($"<align=\"center\"><color={C_TEXT}>------------------</color></align>\n");
             string myIP = GetCurrentIP(); string myColor; string myStateRaw = GetMyStateRaw(out myColor);
             sb.Append($"<size=75%><color={C_TEXT}>本机已连服务器:</color> "); if (PhotonNetwork.IsMasterClient && IsVoiceConnected()) { } else { string myStateText = FormatStatusTag(myStateRaw, myColor); sb.Append($"{myStateText} "); }
@@ -303,8 +417,31 @@ namespace PeakVoiceFix
         private bool IsMismatch() { if (NetworkManager.WrongIPCount > 2) return true; string target = NetworkManager.TargetGameServer; string current = GetCurrentIP(); return !string.IsNullOrEmpty(target) && !string.IsNullOrEmpty(current) && target != current; }
         private bool IsIPMatch(string otherIP) => otherIP == GetCurrentIP();
         private string GetMajorityIP(out int c) { return NetworkManager.GetMajorityIP(out c); }
-        private bool IsAllGood() => IsVoiceConnected() && !IsMismatch() && NetworkManager.TotalRetryCount == 0;
+        private bool IsAllGood()
+        {
+            if (!IsVoiceConnected() || IsMismatch() || NetworkManager.TotalRetryCount > 0) return false;
+            // 检查是否所有人都已连接且无幽灵
+            int joined, total;
+            GetVoiceCounts(out joined, out total);
+            int ghostCount = NetworkManager.GetGhostCount();
+            return joined >= total && ghostCount == 0;
+        }
         private string Truncate(string s, int prefixWeight, bool isHost) { if (string.IsNullOrEmpty(s)) return ""; int totalLimit = 26; if (VoiceFix.MaxTotalLength != null) totalLimit = VoiceFix.MaxTotalLength.Value; int nameLimit = totalLimit - prefixWeight; if (nameLimit < 6) nameLimit = 6; if (isHost) nameLimit -= 2; int currentLen = 0; for (int i = 0; i < s.Length; i++) { int charWeight = (s[i] > 255) ? 2 : 1; if (currentLen + charWeight > nameLimit) return s.Substring(0, i) + "..."; currentLen += charWeight; } return s; }
+
+        private float lastJoinTimesCleanup = 0f;
+        private void CleanupJoinTimes()
+        {
+            if (Time.unscaledTime - lastJoinTimesCleanup < 60f) return;
+            lastJoinTimesCleanup = Time.unscaledTime;
+            if (PhotonNetwork.CurrentRoom == null) { joinTimes.Clear(); return; }
+            var keysToRemove = new List<int>();
+            foreach (var kvp in joinTimes)
+            {
+                if (PhotonNetwork.CurrentRoom.GetPlayer(kvp.Key) == null)
+                    keysToRemove.Add(kvp.Key);
+            }
+            foreach (var key in keysToRemove) joinTimes.Remove(key);
+        }
         private void TrySyncFontFromGame() { if (statsText == null) return; var originalLog = UnityEngine.Object.FindFirstObjectByType<PlayerConnectionLog>(); if (originalLog != null && originalLog.text != null) { statsText.font = originalLog.text.font; statsText.fontSharedMaterial = originalLog.text.fontSharedMaterial; } }
     }
 }

@@ -301,6 +301,7 @@ namespace PeakVoiceFix
                 var sos = ActiveSOSList[i];
                 if (Time.unscaledTime - sos.ReceiveTime > 60f) { ActiveSOSList.RemoveAt(i); continue; }
                 if (GetPlayerName(sos.ActorNumber) == "Unknown") { ActiveSOSList.RemoveAt(i); continue; }
+                if (PhotonNetwork.CurrentRoom == null) continue;
                 Photon.Realtime.Player p = PhotonNetwork.CurrentRoom.GetPlayer(sos.ActorNumber);
                 object ipObj = null;
                 if (p != null && p.CustomProperties.TryGetValue(PROP_IP, out ipObj) && ipObj is string ip && !string.IsNullOrEmpty(ip))
