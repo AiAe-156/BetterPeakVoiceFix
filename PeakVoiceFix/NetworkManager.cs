@@ -191,7 +191,7 @@ namespace PeakVoiceFix
                 ClientState currentState = punVoice.Client.State;
                 if (currentState != lastClientState)
                 {
-                    string msg = $"状态变更: {lastClientState} -> {currentState}";
+                    string msg = $"{L.Get("log_state_change")}: {lastClientState} -> {currentState}";
                     BroadcastLog(msg);
                     SendStateSync(currentState);
                     if (currentState == ClientState.Joined) ConnectionFailCount = 0;
@@ -258,7 +258,7 @@ namespace PeakVoiceFix
         private static void PrintSummaryLog()
         {
             StringBuilder sb = new StringBuilder();
-            sb.AppendLine($"[缓存快照] 记录数:{PlayerCache.Count}");
+            sb.AppendLine($"{L.Get("log_cache_snapshot")}:{PlayerCache.Count}");
             foreach (var kvp in PlayerCache)
             {
                 string ipFull = string.IsNullOrEmpty(kvp.Value.IP) ? "N/A" : kvp.Value.IP;
@@ -281,7 +281,7 @@ namespace PeakVoiceFix
                         if (!string.IsNullOrEmpty(ip)) LastHostUpdateTime = Time.unscaledTime;
                         if (!string.IsNullOrEmpty(LastKnownHostIP) && LastKnownHostIP != ip && !string.IsNullOrEmpty(ip))
                         {
-                            string log = $"房主IP变动: {LastKnownHostIP} -> {ip}";
+                            string log = $"{L.Get("log_host_ip_change")}: {LastKnownHostIP} -> {ip}";
                             BroadcastLog(log);
                             if (HostHistory.Count > 5) HostHistory.RemoveAt(0);
                             HostHistory.Add($"[{DateTime.Now:HH:mm:ss}] {ip}");
@@ -313,7 +313,7 @@ namespace PeakVoiceFix
         {
             if (punVoice.Client.State == ClientState.Disconnected)
             {
-                BroadcastLog("[Host] 房主意外断开，正在自动恢复...");
+                BroadcastLog(L.Get("log_host_disconnected"));
                 punVoice.ConnectUsingSettings(PhotonNetwork.PhotonServerSettings.AppSettings);
                 nextRetryTime = Time.unscaledTime + 5f;
             }
@@ -326,7 +326,7 @@ namespace PeakVoiceFix
             {
                 if (ConnectionFailCount > 0 && (ConnectionFailCount % 6) >= 3)
                 {
-                    BroadcastLog($"[循环] 已失败{ConnectionFailCount}次，暂时切换为盲连...");
+                    BroadcastLog(L.Get("log_loop_blind", ConnectionFailCount));
                     bestIP = null; modeName = $"{modeName}->BlindLoop";
                 }
             }
@@ -349,10 +349,10 @@ namespace PeakVoiceFix
                     WrongIPCount++;
                     if (WrongIPCount <= 2)
                     {
-                        BroadcastLog($"[异频] 当前:{currentIP} 目标:{TargetGameServer} | 纠正({WrongIPCount}/2)");
+                        BroadcastLog($"{L.Get("log_wrong_freq", currentIP, TargetGameServer, WrongIPCount)}");
                         punVoice.Client.Disconnect(); PerformReconnect(modeName);
                     }
-                    else if (WrongIPCount == 3) BroadcastLog($"[妥协] 纠正失败，驻留当前IP: {currentIP}");
+                    else if (WrongIPCount == 3) BroadcastLog(L.Get("log_compromise", currentIP));
                 }
             }
             else if (state == ClientState.Disconnected) { ConnectionFailCount++; PerformReconnect(modeName); }
@@ -373,9 +373,9 @@ namespace PeakVoiceFix
                     if (field != null) { field.SetValue(client, ip); return; }
                     type = type.BaseType;
                 }
-                if (VoiceFix.logger != null) VoiceFix.logger.LogError("无法反射设置 IP");
+                if (VoiceFix.logger != null) VoiceFix.logger.LogError(L.Get("log_reflect_fail"));
             }
-            catch (Exception ex) { if (VoiceFix.logger != null) VoiceFix.logger.LogError($"反射失败: {ex}"); }
+            catch (Exception ex) { if (VoiceFix.logger != null) VoiceFix.logger.LogError($"{L.Get("log_reflect_error")}: {ex}"); }
         }
 
         private static string DecideTargetIP(out string mode)
@@ -383,19 +383,19 @@ namespace PeakVoiceFix
             string majorityIP = GetMajorityIP(out int count);
             if (!string.IsNullOrEmpty(majorityIP) && count >= 2)
             {
-                mode = $"多数派({count}人)"; ConnectedUsingHost = false; LogDecision(mode, majorityIP); return majorityIP;
+                mode = L.Get("log_majority", count); ConnectedUsingHost = false; LogDecision(mode, majorityIP); return majorityIP;
             }
             if (!string.IsNullOrEmpty(LastKnownHostIP))
             {
-                mode = "房主"; ConnectedUsingHost = true; LogDecision(mode, LastKnownHostIP); return LastKnownHostIP;
+                mode = L.Get("log_host"); ConnectedUsingHost = true; LogDecision(mode, LastKnownHostIP); return LastKnownHostIP;
             }
-            mode = "自动(盲连)"; ConnectedUsingHost = false; LogDecision(mode, "Auto"); return null;
+            mode = L.Get("log_auto_blind"); ConnectedUsingHost = false; LogDecision(mode, "Auto"); return null;
         }
 
         private static void LogDecision(string mode, string target)
         {
             string current = $"{mode}->{target}";
-            if (current != LastDecisionLog) { BroadcastLog($"[决策] 目标变更: {current}"); LastDecisionLog = current; }
+            if (current != LastDecisionLog) { BroadcastLog($"{L.Get("log_decision")}: {current}"); LastDecisionLog = current; }
         }
 
         public static string GetMajorityIP(out int maxCount)
@@ -434,7 +434,7 @@ namespace PeakVoiceFix
 
             if (string.IsNullOrEmpty(myCurrentVoiceIP)) myCurrentVoiceIP = "Disconnected";
 
-            BroadcastLog($"[SOS] 发送求救 -> 目标:{targetInfo} | 本机:{myCurrentVoiceIP}");
+            BroadcastLog($"{L.Get("log_sos_send")} -> {L.Get("log_sos_target")}:{targetInfo} | {L.Get("log_sos_local")}:{myCurrentVoiceIP}");
 
             object[] content = new object[] { TYPE_SOS, targetInfo, myCurrentVoiceIP };
             RaiseEventOptions opts = new RaiseEventOptions { Receivers = ReceiverGroup.Others };
@@ -461,7 +461,7 @@ namespace PeakVoiceFix
                     else if (type == TYPE_SOS)
                     {
                         string targetIP = data[1] as string;
-                        string originIP = "未知(旧版)";
+                        string originIP = "Unknown(old)";
                         if (data.Length >= 3 && data[2] is string o) originIP = o;
                         else if (PlayerCache.ContainsKey(senderActor)) originIP = PlayerCache[senderActor].IP;
 
@@ -477,7 +477,7 @@ namespace PeakVoiceFix
 
                         if (VoiceUIManager.Instance != null)
                         {
-                            VoiceUIManager.Instance.AddLog("System", $"收到 {senderName} SOS (目标:{targetIP})", true);
+                            VoiceUIManager.Instance.AddLog("System", L.Get("log_sos_received", senderName, targetIP), true);
                             VoiceUIManager.Instance.TriggerNotification(senderName);
                         }
                     }
@@ -522,14 +522,14 @@ namespace PeakVoiceFix
 
                 if (isConnected)
                 {
-                    BroadcastLog("[系统] Alt+K 手动断开");
-                    if (PhotonNetwork.IsConnectedAndReady) SendSOS("手动断开 (Manual)");
+                    BroadcastLog(L.Get("log_alt_k_disconnect"));
+                    if (PhotonNetwork.IsConnectedAndReady) SendSOS(L.Get("log_sos_manual"));
                     punVoice.Client.Disconnect();
                     if (VoiceUIManager.Instance != null) VoiceUIManager.Instance.ShowStatsTemporary();
                 }
                 else
                 {
-                    BroadcastLog("[系统] Alt+K 强制重连");
+                    BroadcastLog(L.Get("log_alt_k_reconnect"));
                     if (PhotonNetwork.IsMasterClient)
                     {
                         string majorityIP = GetMajorityIP(out int count);

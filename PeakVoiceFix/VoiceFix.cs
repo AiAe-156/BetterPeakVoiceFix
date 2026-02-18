@@ -1,4 +1,5 @@
 ﻿using BepInEx;
+using System;
 using BepInEx.Configuration;
 using BepInEx.Logging;
 using HarmonyLib;
@@ -7,17 +8,29 @@ using PeakVoiceFix.Patches;
 
 namespace PeakVoiceFix
 {
-    // [版本] v0.3.6 - Config UI Update
-    [BepInPlugin("chuxiaaaa.Aiae.BetterVoiceFix", "BetterVoiceFixCN", "0.3.6")]
+    public enum UIPositionEnum
+    {
+        Left,
+        Right
+    }
+
+    // [版本] v1.0.2 - Fix Config Compatibility
+    [BepInPlugin("chuxiaaaa.Aiae.BetterPeakVoiceFix", "BetterVoiceFixCN", "1.0.2")]
     public class VoiceFix : BaseUnityPlugin
     {
+        public static KeyCode GetToggleKey()
+        {
+            if (Enum.TryParse<KeyCode>(ToggleUIKey.Value, true, out var key)) return key;
+            return KeyCode.J;
+        }
+
         public static VoiceFix Instance;
         public static ManualLogSource logger;
         public static ManualLogSource debugLogger;
 
-        // [修改] 改为 string 类型
-        public static ConfigEntry<string> UIPositionSide;
-        public static ConfigEntry<KeyCode> ToggleUIKey;
+        public static ConfigEntry<string> Language;
+        public static ConfigEntry<UIPositionEnum> UIPositionSide;
+        public static ConfigEntry<string> ToggleUIKey;
         public static ConfigEntry<bool> ShowProfessionalInfo;
         public static ConfigEntry<float> OffsetX_Right, OffsetY_Right, OffsetX_Left, OffsetY_Left;
         public static ConfigEntry<float> FontSize;
@@ -37,7 +50,7 @@ namespace PeakVoiceFix
         public static ConfigEntry<bool> EnableVirtualTestPlayer;
         public static ConfigEntry<string> TestPlayerName;
 
-        public const string MOD_VERSION = "v0.3.6";
+        public const string MOD_VERSION = "v1.0.2";
 
         void Awake()
         {
@@ -46,42 +59,48 @@ namespace PeakVoiceFix
             debugLogger = new ManualLogSource("VoiceFixDebug");
             BepInEx.Logging.Logger.Sources.Add(debugLogger);
 
-            // --- UI 设置 ---
-            string catUI = "UI设置";
+            // --- UI Settings (Section: UI) ---
+            string catUI = L.Get("cfg_cat_ui");
 
-            // [修改] 下拉菜单选择：左侧 / 右侧
-            UIPositionSide = Config.Bind(catUI, "UI位置", "右侧",
-                new ConfigDescription("选择UI面板显示在屏幕的哪一侧。", new AcceptableValueList<string>("左侧", "右侧")));
+            // --- 语言设置 (保留双语 Key 以便识别) ---
+            Language = Config.Bind(catUI, "语言-重启生效 | Language - need rebot", L.DetectDefault(),
+                new ConfigDescription(L.Get("cfg_language"), new AcceptableValueList<string>("中文", "English")));
+            L.Init(Language.Value);
+            
+            ToggleUIKey = Config.Bind(catUI, L.Get("cfgn_toggle_key"), KeyCode.J.ToString(), L.Get("cfg_toggle_key"));
 
-            ToggleUIKey = Config.Bind(catUI, "开关快捷键", KeyCode.J, "切换语音面板显示的按键。");
-            ShowProfessionalInfo = Config.Bind(catUI, "显示连接到的语音服务器IP和详细信息", false, "是否在面板中显示具体的已连接语音服务器IP地址和调试信息。");
+            // 使用英文 Key，中文/英文 Description
+            UIPositionSide = Config.Bind(catUI, L.Get("cfgn_ui_position"), UIPositionEnum.Right,
+                new ConfigDescription(L.Get("cfg_ui_position")));
 
-            OffsetX_Right = Config.Bind(catUI, "右侧边距", 20f, "距离屏幕右边缘的水平距离。");
-            OffsetY_Right = Config.Bind(catUI, "顶部边距(右)", 20f, "距离屏幕上边缘的垂直距离。");
-            OffsetX_Left = Config.Bind(catUI, "左侧边距", 20f, "距离屏幕左边缘的水平距离。");
-            OffsetY_Left = Config.Bind(catUI, "顶部边距(左)", 20f, "距离屏幕上边缘的垂直距离。");
+            ShowProfessionalInfo = Config.Bind(catUI, L.Get("cfgn_show_pro"), false, L.Get("cfg_show_pro"));
 
-            FontSize = Config.Bind(catUI, "字体大小", 21f, "面板文字的基础大小。");
-            HostSymbol = Config.Bind(catUI, "房主标记符号", "★", "显示在房主名字前的特殊符号。");
+            OffsetX_Right = Config.Bind(catUI, L.Get("cfgn_offset_x_r"), 20f, L.Get("cfg_offset_x_r"));
+            OffsetY_Right = Config.Bind(catUI, L.Get("cfgn_offset_y_r"), 20f, L.Get("cfg_offset_y_r"));
+            OffsetX_Left = Config.Bind(catUI, L.Get("cfgn_offset_x_l"), 20f, L.Get("cfg_offset_x_l"));
+            OffsetY_Left = Config.Bind(catUI, L.Get("cfgn_offset_y_l"), 20f, L.Get("cfg_offset_y_l"));
 
-            // --- 网络设置 ---
-            string catNet = "网络设置";
-            ConnectTimeout = Config.Bind(catNet, "重连超时时间 (s)", 25f, "如果连接卡住，超过多少秒判定为断开。");
-            RetryInterval = Config.Bind(catNet, "重试间隔 (s)", 8f, "每次自动重连之间的冷却时间。");
-            EnableManualReconnect = Config.Bind(catNet, "启用手动重置 (Alt+K)", true, "允许按 Alt+K 强制断开或重连语音。");
-            EnableGhostFix = Config.Bind(catNet, "启用ID漂移修复", true, "尝试从场景中搜寻名字以修复 Unknown 问题。");
+            FontSize = Config.Bind(catUI, L.Get("cfgn_font_size"), 21f, L.Get("cfg_font_size"));
+            HostSymbol = Config.Bind(catUI, L.Get("cfgn_host_symbol"), "★", L.Get("cfg_host_symbol"));
 
-            // --- 高级设置 ---
-            string catAdv = "高级与调试";
-            MaxTotalLength = Config.Bind(catAdv, "最大名字长度", 26, new ConfigDescription("显示名字的最大字符数。", new AcceptableValueRange<int>(10, 60)));
-            LatencyOffset = Config.Bind(catAdv, "延迟对齐偏移量", 350f, "Ping值显示的水平像素偏移。");
-            AutoHideNormal = Config.Bind(catAdv, "自动隐藏简易UI", true, "当所有人连接正常时，自动隐藏简易模式的UI。");
-            ShowPingInNormal = Config.Bind(catAdv, "简易模式显示Ping", true, "在简易模式下方显示本机延迟。");
-            HideOnMenu = Config.Bind(catAdv, "ESC菜单界面时隐藏", true, "打开ESC菜单时隐藏UI。");
-            EnableDebugLogs = Config.Bind(catAdv, "启用调试日志", false, "在控制台输出详细的网络日志。");
+            // --- Network Settings (Section: Network) ---
+            string catNet = L.Get("cfg_cat_net");
+            ConnectTimeout = Config.Bind(catNet, L.Get("cfgn_timeout"), 25f, L.Get("cfg_timeout"));
+            RetryInterval = Config.Bind(catNet, L.Get("cfgn_retry_interval"), 8f, L.Get("cfg_retry_interval"));
+            EnableManualReconnect = Config.Bind(catNet, L.Get("cfgn_manual_reconnect"), true, L.Get("cfg_manual_reconnect"));
+            EnableGhostFix = Config.Bind(catNet, L.Get("cfgn_ghost_fix"), true, L.Get("cfg_ghost_fix"));
 
-            EnableVirtualTestPlayer = Config.Bind(catAdv, "启用虚拟玩家", false, "添加一个假玩家用于测试UI布局。");
-            TestPlayerName = Config.Bind(catAdv, "虚拟玩家名字", "1234567891012141618202224262830323436", "假玩家的名字。");
+            // --- Advanced Settings (Section: Advanced) ---
+            string catAdv = L.Get("cfg_cat_adv");
+            MaxTotalLength = Config.Bind(catAdv, L.Get("cfgn_max_name_len"), 26, new ConfigDescription(L.Get("cfg_max_name_len"), new AcceptableValueRange<int>(10, 60)));
+            LatencyOffset = Config.Bind(catAdv, L.Get("cfgn_latency_offset"), 350f, L.Get("cfg_latency_offset"));
+            AutoHideNormal = Config.Bind(catAdv, L.Get("cfgn_auto_hide"), true, L.Get("cfg_auto_hide"));
+            ShowPingInNormal = Config.Bind(catAdv, L.Get("cfgn_show_ping"), true, L.Get("cfg_show_ping"));
+            HideOnMenu = Config.Bind(catAdv, L.Get("cfgn_hide_menu"), true, L.Get("cfg_hide_menu"));
+            EnableDebugLogs = Config.Bind(catAdv, L.Get("cfgn_debug_log"), false, L.Get("cfg_debug_log"));
+
+            EnableVirtualTestPlayer = Config.Bind(catAdv, L.Get("cfgn_virtual_player"), false, L.Get("cfg_virtual_player"));
+            TestPlayerName = Config.Bind(catAdv, L.Get("cfgn_virtual_name"), "1234567891012141618202224262830323436", L.Get("cfg_virtual_name"));
 
             Harmony.CreateAndPatchAll(typeof(Patches.LoadBalancingClientPatch));
             Harmony.CreateAndPatchAll(typeof(PhotonRPCFix));
