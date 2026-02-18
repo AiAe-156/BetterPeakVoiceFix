@@ -1,8 +1,10 @@
 **版本：v0.3.5** | **适用游戏：PEAK 1.53a**
-
+<img width="2048" height="2048" alt="封面" src="https://github.com/user-attachments/assets/d20755de-140e-40f4-aa6c-8c2a4d18c3fa" />
+<img width="1273" height="538" alt="英文版0 3 4演示图片" src="https://github.com/user-attachments/assets/656ca5b9-66ab-46e2-ae6c-db0d31ff2a91" />
 ## 1. 模组概述
 
 基于PEAK VOICE FIX的升级版，优化了重连逻辑和加入更多的监控功能，连接日志可视化，支持ALT+K手动断开重连。
+
 
 ## 2.  UI
 
