@@ -14,8 +14,7 @@ namespace PeakVoiceFix
         Right
     }
 
-    // [版本] v1.0.2 - Fix Config Compatibility
-    [BepInPlugin("chuxiaaaa.Aiae.BetterPeakVoiceFix", "BetterVoiceFixCN", "1.0.2")]
+    [BepInPlugin("chuxiaaaa.Aiae.BetterPeakVoiceFix", "BetterVoiceFixCN", PLUGIN_VERSION)]
     public class VoiceFix : BaseUnityPlugin
     {
         public static KeyCode GetToggleKey()
@@ -39,7 +38,6 @@ namespace PeakVoiceFix
         public static ConfigEntry<float> ConnectTimeout;
         public static ConfigEntry<float> RetryInterval;
         public static ConfigEntry<bool> EnableManualReconnect;
-        public static ConfigEntry<bool> EnableGhostFix;
 
         public static ConfigEntry<int> MaxTotalLength;
         public static ConfigEntry<float> LatencyOffset;
@@ -50,7 +48,8 @@ namespace PeakVoiceFix
         public static ConfigEntry<bool> EnableVirtualTestPlayer;
         public static ConfigEntry<string> TestPlayerName;
 
-        public const string MOD_VERSION = "v1.0.2";
+        public const string PLUGIN_VERSION = "1.0.0";
+        public const string MOD_VERSION = "v" + PLUGIN_VERSION;
 
         void Awake()
         {
@@ -59,14 +58,18 @@ namespace PeakVoiceFix
             debugLogger = new ManualLogSource("VoiceFixDebug");
             BepInEx.Logging.Logger.Sources.Add(debugLogger);
 
+            // 先使用系统语言初始化一次，确保语言配置描述文字与系统环境一致。
+            string detectedLanguage = L.DetectDefault();
+            L.Init(detectedLanguage);
+
+            // 语言配置使用固定英文 Section，避免后续切换语言后出现 Section 混杂。
+            Language = Config.Bind("Language", "语言-重启生效 | Language - need restart", detectedLanguage,
+                new ConfigDescription(L.Get("cfg_language"), new AcceptableValueList<string>("中文", "English")));
+            L.Init(Language.Value);
+
             // --- UI Settings (Section: UI) ---
             string catUI = L.Get("cfg_cat_ui");
 
-            // --- 语言设置 (保留双语 Key 以便识别) ---
-            Language = Config.Bind(catUI, "语言-重启生效 | Language - need rebot", L.DetectDefault(),
-                new ConfigDescription(L.Get("cfg_language"), new AcceptableValueList<string>("中文", "English")));
-            L.Init(Language.Value);
-            
             ToggleUIKey = Config.Bind(catUI, L.Get("cfgn_toggle_key"), KeyCode.J.ToString(), L.Get("cfg_toggle_key"));
 
             // 使用英文 Key，中文/英文 Description
@@ -88,7 +91,6 @@ namespace PeakVoiceFix
             ConnectTimeout = Config.Bind(catNet, L.Get("cfgn_timeout"), 25f, L.Get("cfg_timeout"));
             RetryInterval = Config.Bind(catNet, L.Get("cfgn_retry_interval"), 8f, L.Get("cfg_retry_interval"));
             EnableManualReconnect = Config.Bind(catNet, L.Get("cfgn_manual_reconnect"), true, L.Get("cfg_manual_reconnect"));
-            EnableGhostFix = Config.Bind(catNet, L.Get("cfgn_ghost_fix"), true, L.Get("cfg_ghost_fix"));
 
             // --- Advanced Settings (Section: Advanced) ---
             string catAdv = L.Get("cfg_cat_adv");

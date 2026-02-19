@@ -142,7 +142,7 @@ namespace PeakVoiceFix
 
             // === 配置选项名 ===
             { "cfgn_ui_position", "UI位置" },
-            { "cfgn_toggle_key", "开关快捷键" },
+            { "cfgn_toggle_key", "详细UI切换键" },
             { "cfgn_show_pro", "显示连接到的语音服务器IP和详细信息" },
             { "cfgn_offset_x_r", "右侧边距" },
             { "cfgn_offset_y_r", "顶部边距(右)" },
@@ -153,7 +153,6 @@ namespace PeakVoiceFix
             { "cfgn_timeout", "重连超时时间 (s)" },
             { "cfgn_retry_interval", "重试间隔 (s)" },
             { "cfgn_manual_reconnect", "启用手动重置 (Alt+K)" },
-            { "cfgn_ghost_fix", "启用ID漂移修复" },
             { "cfgn_max_name_len", "最大名字长度" },
             { "cfgn_latency_offset", "延迟对齐偏移量" },
             { "cfgn_auto_hide", "自动隐藏简易UI" },
@@ -310,7 +309,6 @@ namespace PeakVoiceFix
             { "cfgn_timeout", "Reconnect Timeout (s)" },
             { "cfgn_retry_interval", "Retry Interval (s)" },
             { "cfgn_manual_reconnect", "Enable Manual Reset (Alt+K)" },
-            { "cfgn_ghost_fix", "Enable ID Drift Fix" },
             { "cfgn_max_name_len", "Max Name Length" },
             { "cfgn_latency_offset", "Latency Alignment Offset" },
             { "cfgn_auto_hide", "Auto-Hide Simple UI" },

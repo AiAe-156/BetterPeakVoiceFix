@@ -300,8 +300,7 @@ namespace PeakVoiceFix
         {
             StringBuilder sb = new StringBuilder(); bool proMode = VoiceFix.ShowProfessionalInfo.Value; float alignX = VoiceFix.LatencyOffset.Value;
 
-            // [修改] 版本号 v1.0.0
-            sb.Append($"<align=\"center\"><size=120%><color={C_TEXT}>{L.Get("ui_title")} (v1.0.2)</color></size></align>\n");
+            sb.Append($"<align=\"center\"><size=120%><color={C_TEXT}>{L.Get("ui_title")} ({VoiceFix.MOD_VERSION})</color></size></align>\n");
             sb.Append($"<align=\"center\"><color={C_TEXT}>------------------</color></align>\n");
             string myIP = GetCurrentIP(); string myColor; string myStateRaw = GetMyStateRaw(out myColor);
             sb.Append($"<size=75%><color={C_TEXT}>{L.Get("local_server")}</color> "); if (PhotonNetwork.IsMasterClient && IsVoiceConnected()) { } else { string myStateText = FormatStatusTag(myStateRaw, myColor); sb.Append($"{myStateText} "); }
@@ -317,7 +316,12 @@ namespace PeakVoiceFix
                 var host = PhotonNetwork.MasterClient; string hostName = host != null ? NetworkManager.GetPlayerName(host.ActorNumber) : L.Get("unknown"); string hostIP = ""; if (host != null && NetworkManager.PlayerCache.TryGetValue(host.ActorNumber, out var hCache)) hostIP = hCache.IP; sb.Append($"<color={C_TEXT}>[{Truncate(hostName, 0, false)}]</color>"); if (!string.IsNullOrEmpty(hostIP)) sb.Append($"<color={C_TEXT}>: {hostIP}</color>");
             }
             sb.Append("</size>\n");
-            if (PhotonNetwork.IsMasterClient) { string majIP = GetMajorityIP(out int cnt); if (cnt > 2 && !string.IsNullOrEmpty(majIP) && majIP != myIP) sb.Append($"<color={C_YELLOW}><size=85%>{L.Get("warn_majority", cnt)}</size></color>\n"); }
+            if (PhotonNetwork.IsMasterClient)
+            {
+                string majIP = GetMajorityIP(out int cnt);
+                if (cnt >= 2 && !string.IsNullOrEmpty(majIP) && majIP != myIP)
+                    sb.Append($"<color={C_YELLOW}><size=85%>{L.Get("warn_majority", cnt)}</size></color>\n");
+            }
 
             int ghostCount = NetworkManager.GetGhostCount();
 
@@ -342,7 +346,20 @@ namespace PeakVoiceFix
             sb.Append($"<align=\"center\"><color={C_TEXT}>------------------</color></align>\n");
             AppendCommonStats(sb, true);
 
-            if (NetworkManager.ActiveSOSList.Count > 0) { sb.Append($"<align=\"center\"><color={C_TEXT}>------------------</color></align>\n"); sb.Append($"<color={C_YELLOW}>{L.Get("sos_snapshot")}</color>\n"); string majIP = GetMajorityIP(out int majCnt); string hostStatus = (PhotonNetwork.IsMasterClient || IsIPMatch(majIP)) ? L.Get("state_synced") : majIP; sb.Append($"<size=80%><color={C_TEXT}>{L.Get("sos_majority")}: {majIP} ({majCnt}{L.Get("sos_person")})</color></size>\n"); foreach (var sos in NetworkManager.ActiveSOSList) { sb.Append($"<size=80%><color={C_RED}>{L.Get("sos_detected", sos.PlayerName)}</color></size>\n"); string lastIP = string.IsNullOrEmpty(sos.OriginIP) ? L.Get("unknown") : sos.OriginIP; sb.Append($"  <size=80%><color={C_TEXT}>{L.Get("sos_target")}: ({sos.TargetIP}) | {L.Get("sos_last")}: {lastIP}</color></size>\n"); } }
+            if (NetworkManager.ActiveSOSList.Count > 0)
+            {
+                sb.Append($"<align=\"center\"><color={C_TEXT}>------------------</color></align>\n");
+                sb.Append($"<color={C_YELLOW}>{L.Get("sos_snapshot")}</color>\n");
+                string majIP = GetMajorityIP(out int majCnt);
+                sb.Append($"<size=80%><color={C_TEXT}>{L.Get("sos_majority")}: {majIP} ({majCnt}{L.Get("sos_person")})</color></size>\n");
+
+                foreach (var sos in NetworkManager.ActiveSOSList)
+                {
+                    sb.Append($"<size=80%><color={C_RED}>{L.Get("sos_detected", sos.PlayerName)}</color></size>\n");
+                    string lastIP = string.IsNullOrEmpty(sos.OriginIP) ? L.Get("unknown") : sos.OriginIP;
+                    sb.Append($"  <size=80%><color={C_TEXT}>{L.Get("sos_target")}: ({sos.TargetIP}) | {L.Get("sos_last")}: {lastIP}</color></size>\n");
+                }
+            }
             if (proMode) { sb.Append($"<align=\"center\"><color={C_TEXT}>------------------</color></align>\n"); string majIP = GetMajorityIP(out int cnt); float ago = Time.unscaledTime - NetworkManager.LastScanTime; sb.Append($"<size=80%><color={C_TEXT}>{L.Get("cache_snapshot")} ({ago:F0}{L.Get("seconds_ago")})</color>\n"); sb.Append($"<color={C_TEXT}>{L.Get("majority_server")}</color> <color={C_TEXT}>{majIP}</color> <color={C_TEXT}>({cnt}{L.Get("sos_person")})</color>\n"); var groups = NetworkManager.PlayerCache.GroupBy(x => x.Value.IP); foreach (var g in groups) { if (g.Key == majIP) continue; string ipLabel = string.IsNullOrEmpty(g.Key) ? L.Get("not_connected") : g.Key; var names = g.Select(x => x.Value.PlayerName).Take(3); string nameList = string.Join(",", names); sb.Append($"<color={C_TEXT}> - {ipLabel}: {nameList}</color>\n"); } if (NetworkManager.HostHistory.Count > 0) sb.Append($"<color={C_TEXT}>{L.Get("history")}</color> {NetworkManager.HostHistory[NetworkManager.HostHistory.Count - 1]}\n"); sb.Append("</size>"); }
             statsText.text = sb.ToString();
         }
@@ -362,7 +379,12 @@ namespace PeakVoiceFix
                     if (actorNumber != -1)
                     {
                         if (!joinTimes.ContainsKey(actorNumber)) joinTimes[actorNumber] = Time.unscaledTime;
-                        if (Time.unscaledTime - joinTimes[actorNumber] < 25f) { statusLabel = L.Get("state_connecting"); statusColor = C_YELLOW; }
+                        float connectTimeout = (VoiceFix.ConnectTimeout != null) ? VoiceFix.ConnectTimeout.Value : 25f;
+                        if (Time.unscaledTime - joinTimes[actorNumber] < connectTimeout)
+                        {
+                            statusLabel = L.Get("state_connecting");
+                            statusColor = C_YELLOW;
+                        }
                         else
                         {
                             if (hasGhosts) { statusLabel = L.Get("state_mismatch"); statusColor = C_GHOST_GREEN; }

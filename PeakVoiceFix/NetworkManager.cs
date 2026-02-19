@@ -59,6 +59,7 @@ namespace PeakVoiceFix
         private static float lastPingPublishTime = 0f;
         private static float lastSOSTime = 0f;
         private static float nextSummaryLogTime = 0f;
+        private static bool wasInRoom = false;
 
         private const float SCAN_INTERVAL = 30f;
         private const float CACHE_TTL = 180f;
@@ -184,7 +185,13 @@ namespace PeakVoiceFix
                 if (obj != null) punVoice = obj.GetComponent<PunVoiceClient>();
             }
 
-            if (!PhotonNetwork.InRoom) return;
+            if (!PhotonNetwork.InRoom)
+            {
+                if (wasInRoom) ResetRoomScopedState();
+                wasInRoom = false;
+                return;
+            }
+            wasInRoom = true;
 
             if (punVoice != null && punVoice.Client != null)
             {
@@ -300,7 +307,23 @@ namespace PeakVoiceFix
             {
                 var sos = ActiveSOSList[i];
                 if (Time.unscaledTime - sos.ReceiveTime > 60f) { ActiveSOSList.RemoveAt(i); continue; }
-                if (GetPlayerName(sos.ActorNumber) == "Unknown") { ActiveSOSList.RemoveAt(i); continue; }
+
+                // GetPlayerName 在无法解析时通常返回 "Player {id}"，这里把该情况也视为未解析名字。
+                string displayName = GetPlayerName(sos.ActorNumber);
+                bool unresolvedName =
+                    string.IsNullOrEmpty(displayName) ||
+                    displayName == "Unknown" ||
+                    displayName.StartsWith("Player ");
+
+                if (unresolvedName)
+                {
+                    if (PhotonNetwork.CurrentRoom == null || PhotonNetwork.CurrentRoom.GetPlayer(sos.ActorNumber) == null)
+                    {
+                        ActiveSOSList.RemoveAt(i);
+                        continue;
+                    }
+                }
+
                 if (PhotonNetwork.CurrentRoom == null) continue;
                 Photon.Realtime.Player p = PhotonNetwork.CurrentRoom.GetPlayer(sos.ActorNumber);
                 object ipObj = null;
@@ -516,6 +539,12 @@ namespace PeakVoiceFix
         {
             if (VoiceFix.EnableManualReconnect != null && VoiceFix.EnableManualReconnect.Value && (Input.GetKey(KeyCode.LeftAlt) || Input.GetKey(KeyCode.RightAlt)) && Input.GetKeyDown(KeyCode.K))
             {
+                if (punVoice == null || punVoice.Client == null)
+                {
+                    BroadcastLog("[System] Alt+K ignored: Voice client not ready.");
+                    return;
+                }
+
                 bool isConnected = (punVoice.Client.State == ClientState.Joined ||
                                     punVoice.Client.State == ClientState.ConnectingToGameServer ||
                                     punVoice.Client.State == ClientState.Authenticating);
@@ -530,15 +559,9 @@ namespace PeakVoiceFix
                 else
                 {
                     BroadcastLog(L.Get("log_alt_k_reconnect"));
-                    if (PhotonNetwork.IsMasterClient)
-                    {
-                        string majorityIP = GetMajorityIP(out int count);
-                        string ipToUse = (!string.IsNullOrEmpty(majorityIP) && count >= 2) ? majorityIP : null;
-                        SetGameServerAddress(punVoice.Client, ipToUse);
-                    }
-
-                    string retryTarget = TargetGameServer;
-                    if (string.IsNullOrEmpty(retryTarget)) retryTarget = "Auto/Blind";
+                    string manualTarget = DecideTargetIP(out _);
+                    TargetGameServer = manualTarget;
+                    SetGameServerAddress(punVoice.Client, manualTarget);
 
                     nextRetryTime = Time.unscaledTime;
                     ConnectionFailCount = 0;
@@ -546,6 +569,33 @@ namespace PeakVoiceFix
                 }
                 WrongIPCount = 0; TotalRetryCount = 0;
             }
+        }
+
+        private static void ResetRoomScopedState()
+        {
+            PlayerCache.Clear();
+            ActiveSOSList.Clear();
+            HostHistory.Clear();
+
+            TargetGameServer = null;
+            ConnectedUsingHost = true;
+            IsBlindConnect = false;
+
+            WrongIPCount = 0;
+            ConnectionFailCount = 0;
+            TotalRetryCount = 0;
+
+            LastErrorMessage = "";
+            LastKnownHostIP = "";
+            LastHostUpdateTime = 0f;
+            LastScanTime = 0f;
+            LastDecisionLog = "";
+            lastClientState = ClientState.Disconnected;
+
+            nextRetryTime = 0f;
+            lastPingPublishTime = 0f;
+            lastSOSTime = 0f;
+            nextSummaryLogTime = 0f;
         }
     }
 }
