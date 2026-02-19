@@ -14,7 +14,7 @@ namespace PeakVoiceFix
         Right
     }
 
-    [BepInPlugin("chuxiaaaa.Aiae.BetterPeakVoiceFix", "BetterVoiceFixCN", PLUGIN_VERSION)]
+    [BepInPlugin("chuxiaaaa.Aiae.BetterPeakVoiceFix", "BetterPeakVoiceFix", PLUGIN_VERSION)]
     public class VoiceFix : BaseUnityPlugin
     {
         public static KeyCode GetToggleKey()
