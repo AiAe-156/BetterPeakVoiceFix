@@ -1,221 +1,212 @@
-**版本：v0.3.5** | **适用游戏：PEAK 1.53a**
-<img width="2048" height="2048" alt="封面" src="https://github.com/user-attachments/assets/d20755de-140e-40f4-aa6c-8c2a4d18c3fa" />
-<img width="1273" height="538" alt="英文版0 3 4演示图片" src="https://github.com/user-attachments/assets/656ca5b9-66ab-46e2-ae6c-db0d31ff2a91" />
-## 1. 模组概述
+**Version: v1.0.0** | **Game Version: PEAK 1.54a**  |  [👉中文说明和更新日志](https://www.yuque.com/u56076526/pighgl/tikdgc470dm0wmgn?singleDoc#)
 
-基于PEAK VOICE FIX的升级版，优化了重连逻辑和加入更多的监控功能，连接日志可视化，支持ALT+K手动断开重连。
+## 1. Mod Overview
 
+An upgraded version based on PEAK VOICE FIX, featuring optimized reconnection logic, added monitoring capabilities, visualized connection logs, and support for manual disconnection/reconnection via `Alt + K`.
+![](https://github.com/AiAe-156/BetterPeakVoiceFix/blob/master/%E8%8B%B1%E6%96%87%E7%89%880.3.4%E6%BC%94%E7%A4%BA%E5%9B%BE%E7%89%87.png?raw=true)
 
-## 2.  UI
+- ***I have made some optimizations to the text in version 0.3.5. The previous expressions like "MY IP" could indeed lead people to mistakenly believe that their IP would be exposed.***
+- ***To facilitate maintenance, the Chinese and English versions will be combined and re-released. You can select the language in the configuration options and it will take effect upon restart.***
 
-### A. 常驻简易 UI (默认开启)
+## 2. UI
 
-在屏幕（默认右侧）显示的小型状态栏。
+### A. Simple Overlay UI (Default: On)
 
-* ​**本机语音**​：显示当前连接状态（如 **已连接** 🟢）。
-* ​**语音连接人数**​：格式为 `n/N`。
-  
-  * 仅当所有人完美连接且无错位时，会自动隐藏（可配置）。
-* 当有玩家状态变化时会将其显示出来。
+A small status bar displayed on the screen (default: right side).
 
-### B. 详细信息面板 ( J 键切换)
+* **Local Voice**: Displays current connection status (e.g., **Connected** 🟢).
+* **Voice Connection Count**: Format is `n/N`.
+  * Automatically hides when everyone is perfectly connected with no misalignment (Configurable).
+* Displays notifications when a player's status changes.
 
-这是模组的核心视窗，包含三部分信息。
+### B. Detailed Information Panel (Toggle with J)
 
-#### ① 顶部：连接状态与 IP
+This is the core window of the mod, containing three sections of information.
 
-* ​**本机(语音)服务器IP**​：你当前连接的语音服务器地址。
-* ​**房主(语音)服务器IP**​：房主所在的语音服务器地址。
-  * **[同步]** 🟢：你与房主在同一频道，能互相听到。
-  * **[异常]** 🔴：你与房主不在同一频道（即“孤立”状态），需重连。
+#### ① Top: Connection Status & IP
 
-#### ② 中部：玩家列表状态 (关键)
+* **Local (Voice) Server IP**: The voice server address you are currently connected to.
+* **Host (Voice) Server IP**: The voice server address the room host is connected to.
+  * **[Sync]** 🟢: You and the host are on the same channel; you can hear each other.
+  * **[Abnormal]** 🔴: You are on a different channel from the host (Status: "Isolated"). Reconnection is required.
 
-每一行代表一个游戏内的玩家。模组通过智能算法赋予他们不同的状态标签：
+#### ② Middle: Player List Status (Key Feature)
 
-| **状态标签** | **颜色**    | **触发条件与含义**                                                                                                                                                          |
-| -------------------- | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **[已连接]** | **绿色** 🟢 | ​**完美状态**​。ID 匹配，语音在房间内。                                                                                                                                   |
-| **[错位]**   | **淡绿** 🟢 | ​**v0.3.4 核心功能**​。玩家显示已断开，但语音房间里有“无名幽灵”占位。**含义**​：他的语音大概率是**通畅**的，只是 ID 卡住了。​**无需让他重连**​。 |
-| **[连接中]** | **黄色** 🟡 | 玩家刚进房（前 25秒）或正在验证。请耐心等待变绿。                                                                                                                                 |
-| **[断开]**   | **红色** 🔴 | 进房超过 25秒，且语音房间里没有对应的幽灵。**含义**​：彻底没连上，听不到也说不出。需按 Alt+K。                                                                           |
-| **[孤立]**   | **黄色** 🟡 | 本机连错了语音服务器，不同服务器是无法互相通信的。                                                                                                                                |
+Each row represents a player in the game. The mod assigns different status tags via an intelligent algorithm:
 
-#### ③ 顶部/底部：智能统计栏
+| **Status Tag** | **Color** | **Trigger Condition & Meaning** |
+| :--- | :--- | :--- |
+| **[Connected]** | **Green** 🟢 | **Perfect State**. ID matches, and voice is in the room. |
+| **[Misaligned]** | **Pale Green** 🟢 | **v0.3.4 Core Feature**. The player appears disconnected, but a "Nameless Ghost" occupies a voice slot. **Meaning**: Their voice is likely **working**, but the ID is stuck. **Do NOT ask them to reconnect.** |
+| **[Connecting]** | **Yellow** 🟡 | Player just joined (first 25s) or is verifying. Please wait patiently for it to turn green. |
+| **[Disconnected]** | **Red** 🔴 | Joined over 25s ago, and there is no corresponding ghost in the voice room. **Meaning**: Completely failed to connect; cannot hear or speak. Needs to press `Alt + K`. |
+| **[Isolated]** | **Yellow** 🟡 | Local client connected to the wrong voice server. Different servers cannot communicate with each other. |
 
-显示格式：`n` / `N`​`(m 人ID错位)`
+#### ③ Top/Bottom: Smart Statistics Bar
 
-* ​**n (当前语音人数)**​：包含 **正常连接** + **错位(幽灵)连接** 的总和。
-  
-  * 若 **n = N** (满员)：显示为 **绿色** 🟢。
-  * 若 ​**存在错位**​：显示为 **淡绿色** 🟢。
-  * 若 **n < N** (未满)：显示为 **黄色** 🟡。
-  * 若 **n = 1** (孤立)：显示为 **红色** 🔴。
-* ​**N (游戏总人数)**​：当前房间内的玩家总数。
-* ​**(m 人ID错位)**​：仅当检测到幽灵连接时显示，提示你有多少人处于“错位”状态。
+Display Format: `n` / `N` `(m ID Misaligned)`
 
----
-
-### C. 调试控制台 (按 Alt + J)
-
-面向高级用户，显示底层数据流。
-
-* ​**数据列**​：`ID | Name | IP | Ver | [状态]`
-* ​**[幽灵] 标记**​：明确指出哪些 ID 是残留的“尸体”。
-* ​**Ver**​：显示对方安装的模组版本（如 `v0.3.4`，需对方也安装此版本）。
-* ​**功能按钮**​：支持一键导出日志到文件，方便反馈 BUG。
+* **n (Current Voice Count)**: Sum of **Normal Connections** + **Misaligned (Ghost) Connections**.
+  * If **n = N** (Full): Displayed in **Green** 🟢.
+  * If **Misalignment exists**: Displayed in **Pale Green** 🟢.
+  * If **n < N** (Not Full): Displayed in **Yellow** 🟡.
+  * If **n = 1** (Isolated): Displayed in **Red** 🔴.
+* **N (Total Game Players)**: Total number of players currently in the room.
+* **(m ID Misaligned)**: Only displayed when ghost connections are detected, indicating how many people are in a "Misaligned" state.
 
 ---
 
-## 2. 核心功能
+### C. Debug Console (Press Alt + J)
 
-### 连接与同步逻辑
+Intended for advanced users to view raw data streams.
 
-本模组并非简单的“断线重连器”，而是一个基于 **PUN (Photon Unity Networking)** 的分布式语音协调系统。它通过一套严密的决策树来确保所有玩家“殊途同归”。
+* **Data Columns**: `ID | Name | IP | Ver | [Status]`
+* **[Ghost] Tag**: Clearly identifies which IDs are residual "dead bodies" (stale data).
+* **Ver**: Displays the mod version installed by the other player (e.g., `v0.3.4`; requires the other player to also have this version).
+* **Function Buttons**: Supports one-click log export to a file for bug reporting.
 
-#### A. 房主：灯塔广播机制
+---
 
-房主是语音网络的基准点。
+## 3. Core Features
 
-* ​**机制**​：房主的客户端会以高频率（每秒检查）扫描自身的语音连接状态。一旦连接成功，模组会将当前的 **语音服务器 IP** 写入到房主的 **​PUN 玩家自定义属性 (​**`PVF_IP`**)** 中。
-* ​**同步**​：这个属性是全网同步的。这意味着房间内任何一个安装了模组的客机，都能实时读取到房主当前连接的语音 IP。
-* ​**变动广播**​：如果房主因网络波动切换了语音服务器，模组会立即更新属性，并广播一条日志：“房主IP变动: Old -> New”，指引所有客机跟随。
+### Connection & Synchronization Logic
 
-#### B. 客机：智能决策树
+This mod is not a simple "Reconnector"; it is a distributed voice coordination system based on **PUN (Photon Unity Networking)**. It uses a rigorous decision tree to ensure all players eventually reach the same destination.
 
-客机并不是无脑连房主，而是拥有一套**​“多数派优先”​**的智能决策逻辑，以防止房主单人掉线导致全员陪葬。
+#### A. Host: Lighthouse Broadcast Mechanism
 
-**当客机需要重连时，执行以下逻辑判断：**
+The Host is the reference point for the voice network.
+
+* **Mechanism**: The Host client scans its own voice connection status at high frequency (every second). Once connected, the mod writes the current **Voice Server IP** into the Host's **PUN Player Custom Properties (`PVF_IP`)**.
+* **Synchronization**: This property is synced across the network. This means any client in the room with the mod installed can read the Host's current voice IP in real-time.
+* **Change Broadcast**: If the Host switches voice servers due to network fluctuation, the mod immediately updates the property and broadcasts a log: "Host IP Changed: Old -> New", guiding all clients to follow.
+
+#### B. Client: Intelligent Decision Tree
+
+Clients do not blindly follow the Host. Instead, they use a **"Majority Priority"** intelligent decision logic to prevent the whole team from failing if the Host drops alone.
+
+**When a Client needs to reconnect, it executes the following logic:**
 
 ```plain
-[开始重连决策]
+[Start Reconnection Decision]
       │
       ▼
-1. 【寻找多数派 (Majority Rule)】
-   统计缓存中所有玩家所在的语音 IP。
-   IF (某个 IP 的人数 ≥ 2 且是全场最多)
-      └─ 决定：连接到这个“多数派 IP” (跟随大部队)
+1. 【Majority Rule】
+   Count the voice IPs of all players in the cache.
+   IF (A certain IP has count ≥ 2 AND is the majority)
+      └─ Decision: Connect to this "Majority IP" (Follow the crowd)
       
-      ▼ (如果大家都很分散)
+      ▼ (If everyone is scattered)
       
-2. 【跟随房主 (Follow Host)】
-   读取房主的 PVF_IP 属性。
-   IF (房主有有效 IP)
-      └─ 决定：连接到房主的 IP
+2. 【Follow Host】
+   Read the Host's PVF_IP property.
+   IF (Host has a valid IP)
+      └─ Decision: Connect to Host's IP
       
-      ▼ (如果房主也没连上)
+      ▼ (If Host is also disconnected)
       
-3. 【盲连/自动 (Blind Connect)】
-   不指定 IP，让 Photon 自动分配。
-   └─ 决定：听天由命 (Auto)
+3. 【Blind Connect / Auto】
+   Do not specify an IP; let Photon assign automatically.
+   └─ Decision: Leave it to fate (Auto)
 ```
 
-​**意义**​：这套逻辑确保了即使房主掉线，剩下的人也能为后面中途加入的人提供广播功能。(前提是房间内至少两人安装模组且新加入的玩家也安装了模组)
+**Significance**: This logic ensures that even if the Host disconnects, the remaining players can provide broadcasting functions for late joiners (assuming at least two people in the room have the mod, and the new player also has the mod).
 
-### SOS 与 快照缓存
+### SOS & Snapshot Cache
 
-#### A. 缓存快照
+#### A. Snapshot Cache
 
-模组会在本地维护一份 `PlayerCache`（花名册）。
+The mod maintains a local `PlayerCache` (Roster).
 
-* ​**作用**​：PUN 的玩家列表有时会因为网络波动瞬间消失（导致数据丢失）。本地缓存会“记住”每个玩家最后一次出现的 ​**名字**​、​**IP**​、**版本号** 和 ​**状态**​。
-* ​**价值**​：这就是为什么即使玩家掉线了，Alt+J 面板依然能显示他“上次所在的 IP”和“是否为幽灵”，而不是直接消失。
+* **Function**: PUN player lists sometimes vanish instantly due to network fluctuations (causing data loss). The local cache "remembers" the last known **Name**, **IP**, **Version**, and **Status** of every player.
+* **Value**: This is why the `Alt + J` panel can still show a player's "Last Known IP" and "Ghost Status" even after they drop, instead of them simply disappearing.
 
-#### B. SOS 求救信号
+#### B. SOS Distress Signal
 
-当模组执行自动重连，或玩家按下 Alt+K 时，会向全房间广播一个 **Event Code 186** 的数据包。
+When the mod executes an auto-reconnect or a player presses `Alt + K`, it broadcasts a data packet with **Event Code 186** to the whole room.
 
-* ​**发送内容**​：`[类型:SOS, 目标IP, 来源IP]`
-* ​**接收方反应**​：
+* **Content**: `[Type: SOS, Target IP, Source IP]`
+* **Receiver Reaction**:
+  1. A warning pops up at the bottom of the UI.
+  2. Records the player's "accident scene" (where they dropped from, where they are trying to go).
+* **Practical Use**: When you see someone consistently failing to connect, checking the SOS log might reveal their "Target IP" differs from the group's "Majority IP," allowing you to immediately judge if they are on the wrong server rather than having a broken microphone.
 
-1. UI 底部弹出警告。
-2. 记录该玩家的“事故现场”（他从哪里掉的，想去哪里）。
+### Manual Intervention (Alt + K) Scenarios
 
-* ​**实战用途**​：当你看到某人一直连不上，查看 SOS 日志发现他的“目标 IP”和大家的“多数派 IP”不一致，就能立即判断是他连错服务器了，而不是麦克风坏了。
-
-### 手动干预(Alt + K)使用场景
-
-* **场景一：当前是 [孤立] 状态**
-  
-  * ​**动作**​：​**主动断开 (Disconnect)**​。
-  * ​**逻辑**​：调用 `punVoice.Client.Disconnect()` -> 发送 SOS 信号“手动断开”。
-  * ​**目的**​：软重启，当你发现自己串台了，可以尝试主动断开重进。
-* **场景二：当前是 [断开] / [连接中] 状态**
-  
-  * ​**动作**​：​**强制重连 (Force Reconnect)**​。
-  * ​**逻辑**​：立即触发 `HandleClientLogic` -> 走一遍上面的“智能决策树” -> 强制指定 IP -> 发起连接。
-  * ​**循环策略**​：如果连续失败 3 次，模组会自动放弃指定 IP，转为“盲连模式”尝试破局。
-* 已知问题：手动切换时本机UI会卡住，且可能会导致ID错位(不影响语音)。
+* **Scenario 1: Current Status is [Isolated]**
+  * **Action**: **Active Disconnect**.
+  * **Logic**: Calls `punVoice.Client.Disconnect()` -> Sends SOS signal "Manual Disconnect".
+  * **Purpose**: Soft restart. When you realize you are on the wrong channel, try actively disconnecting to rejoin.
+* **Scenario 2: Current Status is [Disconnected] / [Connecting]**
+  * **Action**: **Force Reconnect**.
+  * **Logic**: Immediately triggers `HandleClientLogic` -> Runs the "Intelligent Decision Tree" above -> Forces specific IP -> Initiates connection.
+  * **Loop Strategy**: If it fails 3 times consecutively, the mod gives up on the specific IP and switches to "Blind Connect Mode" to attempt a breakthrough.
+* *Known Issue: Manual switching may cause the local UI to freeze momentarily and may lead to ID misalignment (does not affect voice).*
 
 ---
 
-## 4. 配置选项与快捷键
+## 4. Configuration & Shortcuts
 
-### ⌨️ 快捷键
+### ⌨️ Shortcuts
 
-* ​**J**​：切换 UI 显示模式（隐藏 -> 简易 -> 详细）。
-* ​**Alt + K**​：​**手动重置 (SOS)**​。
-  
-  * ​**防误触机制**​：如果当前是 **[已连接]** / **[错位]** 状态，按第一次会​**主动断开**​。**再按一次**才会执行强制重连。
-  * 如果当前是 **[断开]** 状态，按一次即可直接重连。
-* ​**Alt + J**​：打开/关闭调试控制台。
+* **J**: Toggle UI display mode (Hidden -> Simple -> Detailed).
+* **Alt + K**: **Manual Reset (SOS)**.
+  * **Safety Mechanism**: If currently **[Connected]** / **[Misaligned]**, the first press will **Disconnect**. You must **press again** to execute a Force Reconnect.
+  * If currently **[Disconnected]**, a single press triggers direct reconnection.
+* **Alt + J**: Open/Close Debug Console.
 
-### ⚙️ 配置文件
+### ⚙️ Configuration File
 
-*(路径: BepInEx/config/chuxiaaaa.Aiae.BetterVoiceFix.cfg)*
+*(Path: BepInEx/config/chuxiaaaa.Aiae.BetterVoiceFix.cfg)*
 
-* **UI设置**
-  
-  * ​**UI位置**​：下拉可选择 `左侧` 或 `右侧`。
-* **网络设置**
-  
-  * ​**重连超时时间**​：默认 `25秒`。即进房后黄色的 [连接中] 状态维持的最长时间，超时变红。
-  * ​**启用ID漂移修复**​：默认 `True`。建议保持开启，否则可能看到 Unknown。
-  * **启用手动重置 (Alt+K)"**：默认 true, 允许按 Alt+K 强制断开或重连语音。
-  * **重试间隔 (s)**：每次自动重连之间的冷却时间
-* **高级与调试**
-  
-  * ​**启用虚拟玩家**​：在 UI 上生成一个假人，用于测试排版。
-  * **延迟对齐偏移量**：Ping值显示的水平像素偏移，单独靠右对齐。
-  * **自动隐藏简易UI**：当所有人连接正常时，自动隐藏简易模式的UI。
-  * **启用调试日志**：在BenInex控制台输出详细的网络日志，默认只显示在alt+J界面中。
-  * **简易模式显示Ping**：在简易模式下方显示本机延迟
-  * **启用虚拟玩家**：添加一个假玩家用于测试UI布局。
-  * **虚拟玩家名****：用于调整字体大小和ping值偏移量。
+* **UI Settings**
+  * **UI Position**: Dropdown to select `Left` or `Right`.
+* **Network Settings**
+  * **Reconnection Timeout**: Default `25 seconds`. The max time the yellow [Connecting] status lasts after joining before turning red.
+  * **Enable ID Drift Fix**: Default `True`. Recommended to keep enabled, otherwise you may see "Unknown".
+  * **Enable Manual Reset (Alt+K)**: Default `True`. Allows forcing voice disconnection or reconnection via `Alt + K`.
+  * **Retry Interval (s)**: Cooldown time between automatic reconnection attempts.
+* **Advanced & Debug**
+  * **Enable Virtual Player**: Generates a dummy on the UI for layout testing.
+  * **Ping Alignment Offset**: Horizontal pixel offset for Ping display to align it separately to the right.
+  * **Auto Hide Simple UI**: Automatically hides the Simple Mode UI when everyone is connected normally.
+  * **Enable Debug Logs**: Outputs detailed network logs to the BepInEx console (Default: only shown in Alt+J interface).
+  * **Show Ping in Simple Mode**: Displays local latency under the Simple Mode UI.
+  * **Virtual Player Name**: Used for adjusting font size and ping offset testing.
 
-## 5. 兼容性
+## 5. Compatibility
 
-| **对方状态**            |                                                                                                 |
-| ------------------------------- | ------------------------------------------------------------------------------------------------- |
-| **未安装模组**          | 同步和重连机制无效，但你能单向看到他的真实状态（断开/连接）                                     |
-| **兼容PeakVoiceFix**    | 理论上同步(广播和接受房主服务器IP)机制是兼容的，但UI跟未安装模组一样。                          |
-| **旧版模组 (＜v0.3.0)** | 功能正常，能看到IP和连接情况，但看不到你的详细连接步骤（如“验证中...”），也看不到你的版本号。 |
-| **＞v0.3.4**            | 功能正常，能看到详细连接步骤、版本号、IP。                                                      |
+| **Other Player's Status** | **Interaction Result** |
+| :--- | :--- |
+| **No Mod Installed** | Sync and reconnection mechanisms are ineffective, but you can see their true status (Disconnected/Connected) one-way. |
+| **Compatible PeakVoiceFix** | Theoretically, the synchronization (Broadcasting and receiving Host IP) mechanism is compatible, but the UI behaves like they have no mod. |
+| **Old Version (< v0.3.0)** | Functional. You can see their IP and connection status, but you won't see their detailed connection steps (e.g., "Verifying...") or their version number. |
+| **> v0.3.5** | Fully Functional. You can see detailed connection steps, version numbers, and IPs. |
 
 ---
 
-## 6. 常见问题 (FAQ)
+## 6. FAQ
 
-**Q: 为什么人数显示 ​** `10/10`​**，但后面跟着 ​**​`(2 人ID错位)`**？**
+**Q: Why does the count show `10/10`, but it's followed by `(2 ID Misaligned)`?**
 
-A: 这说明语音房间里确实有 10 个连接（满员）。其中 8 个是正常的，2 个是 ID 错位的。
+A: This means there are indeed 10 connections (Full) in the voice room. 8 are normal, and 2 are ID Misaligned.
+Because **Misaligned = Can Speak**, the total counts as full (Green/Pale Green). This is **good news**, indicating voice is working for everyone.
 
-因为 ​**错位 = 能说话**​，所以总数算作满员（绿色/淡绿）。这是一个​**好消息**​，说明全员语音通畅。
+**Q: I am in [Misaligned] status. Do I need to press Alt + K to fix it?**
 
-**Q: 我是 [错位] 状态，需要按 Alt+K 修复吗？**
+A: **NO.** As long as you can speak and hear others, do not touch it. [Misaligned] only means the ID doesn't match the slot, but it does not affect voice functionality. Forcing a reconnect might cause you to completely freeze or disconnect.
 
-A: ​**不需要**​。只要你能说话，能听到别人，就不要乱动。[错位] 只是 ID 对不上，不影响语音功能。强行重连反而可能导致你彻底卡死。
+**Q: Why can't I see myself in the Alt + J list after joining the game?**
 
-**Q: 为什么我自己进了游戏，但在 Alt+J 的列表里看不到自己？**
+A: This means **you are the one who is misaligned**.
+The Dump list prints "IDs inside the Voice Server." Your Game ID is new, but your Voice Client is still using the old ID (Ghost). Because the old ID cannot find a corresponding player name, it might show as `[Ghost]` or be categorized into the misalignment statistics.
 
-A: 这说明​**你自己就是那个错位的人**​。
+**Q: Why is everyone yellow when I first join the room?**
 
-Dump 列表打印的是“语音服务器里的 ID”。你的游戏 ID 是新的，但你的语音客户端还在用旧 ID（幽灵）。因为旧 ID 找不到对应的玩家名字，所以可能显示为 `[幽灵]` 或者被归类到错位统计中。
+A: This is the **25-second grace period**. Connecting to voice takes time; the mod doesn't report errors immediately but displays the yellow [Connecting] status while waiting for data synchronization.
 
-**Q: 刚进房间为什么所有人都是黄色的？**
+**Q: When should I use Alt + K?**
 
-A: 这是 ​**25秒宽限期**​。游戏连接语音需要时间，模组不会一上来就报错，而是先显示黄色 [连接中] 等待数据同步。
+A: You should try manual disconnection/reconnection only when you are displayed as **[Isolated]** or **[Disconnected]**. If it still doesn't work, please restart the game and Steam, check your network, or check your mods (especially `LocalMultiplayer`).
 
-**Q:什么时候应该使用alt+K？**
-
-A:当你显示为[孤立]/[断开]的时候，可尝试手动断开重连，如果依然不奏效，请重启游戏和steam/检查网络/检查模组(尤其是LocalMultiplayer)。
+To be honest,I'm a novice. I used AI to assist me in organizing the code and the documentation. After nearly one month of testing in a multi-person room (8~12 player), the current version is now basically stable.
