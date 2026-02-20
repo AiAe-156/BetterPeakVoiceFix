@@ -246,7 +246,7 @@ namespace PeakVoiceFix
 
         private void AppendCommonStats(StringBuilder sb, bool forceShow)
         {
-            bool isSinglePlayer = PhotonNetwork.OfflineMode || (PhotonNetwork.CurrentRoom != null && PhotonNetwork.CurrentRoom.MaxPlayers == 1);
+            bool isSinglePlayer = PhotonNetwork.OfflineMode || (PhotonNetwork.CurrentRoom != null && PhotonNetwork.CurrentRoom.PlayerCount <= 1);
             if (isSinglePlayer) { if (!wasSinglePlayer) { singlePlayerEnterTime = Time.unscaledTime; wasSinglePlayer = true; } } else { wasSinglePlayer = false; }
             bool hideDetails = !forceShow && isSinglePlayer && (Time.unscaledTime > singlePlayerEnterTime + 10f);
             if (!hideDetails)
@@ -333,7 +333,7 @@ namespace PeakVoiceFix
                 foreach (Photon.Realtime.Player p in PhotonNetwork.PlayerList)
                 {
                     int actorNr = p.ActorNumber; processedActors.Add(actorNr); string ip = ""; int ping = 0; bool hasData = false; bool isLocal = p.IsLocal; bool isHost = p.IsMasterClient; bool inVoice = false;
-                    if (NetworkManager.punVoice != null && NetworkManager.punVoice.Client != null && NetworkManager.punVoice.Client.CurrentRoom != null) inVoice = NetworkManager.punVoice.Client.CurrentRoom.Players.ContainsKey(actorNr);
+                    inVoice = NetworkManager.IsPlayerInVoiceRoom(actorNr);
                     if (isLocal) { ip = GetCurrentIP(); ping = PhotonNetwork.GetPing(); hasData = true; inVoice = IsVoiceConnected(); } else { object ipObj, pingObj; if (p.CustomProperties.TryGetValue("PVF_IP", out ipObj)) ip = (string)ipObj; if (p.CustomProperties.TryGetValue("PVF_Ping", out pingObj)) ping = (int)pingObj; if (!string.IsNullOrEmpty(ip)) hasData = true; }
                     string fixedName = NetworkManager.GetPlayerName(actorNr); byte rState = 0; if (NetworkManager.PlayerCache.ContainsKey(actorNr)) rState = NetworkManager.PlayerCache[actorNr].RemoteState;
                     renderList.Add(new PlayerRenderData { Name = fixedName, IP = ip, Ping = ping, IsLocal = isLocal, IsHost = isHost, IsAlive = true, HasModData = hasData, IsInVoiceRoom = inVoice, ActorNumber = actorNr, RemoteState = rState });
@@ -417,11 +417,20 @@ namespace PeakVoiceFix
             if (PhotonNetwork.PlayerList != null)
             {
                 total = PhotonNetwork.PlayerList.Length;
+
+                // 单人房时不显示幽灵/错位统计噪声，直接以本机连接状态计数。
+                if (total <= 1)
+                {
+                    joined = IsVoiceConnected() ? 1 : 0;
+                    return;
+                }
+
                 if (NetworkManager.punVoice != null && NetworkManager.punVoice.Client != null && NetworkManager.punVoice.Client.CurrentRoom != null)
                 {
-                    foreach (var id in NetworkManager.punVoice.Client.CurrentRoom.Players.Keys)
+                    // 只计算在游戏房间中也有对应玩家的语音成员。
+                    foreach (var kvp in NetworkManager.punVoice.Client.CurrentRoom.Players)
                     {
-                        if (!NetworkManager.IsGhost(id)) joined++;
+                        if (!NetworkManager.IsGhost(kvp.Key)) joined++;
                     }
                 }
                 else

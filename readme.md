@@ -2,11 +2,11 @@
 
 ## 1. Mod Overview
 
-An upgraded version based on PEAK VOICE FIX, featuring optimized reconnection logic, added monitoring capabilities, visualized connection logs, and support for manual disconnection/reconnection via `Alt + K`.
-![](https://github.com/AiAe-156/BetterPeakVoiceFix/blob/master/%E8%8B%B1%E6%96%87%E7%89%880.3.4%E6%BC%94%E7%A4%BA%E5%9B%BE%E7%89%87.png?raw=true)
-
+- Based on the `PEAK VOICE` FIX from @chuxia,supports switching between Chinese and English. It includes optimized reconnection logic and additional monitoring features. Press the `J` to view the voice status of all players in the room. If you experience voice issues, use `ALT+K` to manually disconnect and reconnect (this can only be done once if the connection is stuck for over 20 seconds).
+- For the host's voice server broadcast to work, **both** the **host and clients** must have the mod ​**installed**​. If only one party has the mod, its functionality will be limited to viewing the team's voice status and manual reconnection.
 - ***I have made some optimizations to the text in version 0.3.5. The previous expressions like "MY IP" could indeed lead people to mistakenly believe that their IP would be exposed.***
 - ***To facilitate maintenance, the Chinese and English versions will be combined and re-released. You can select the language in the configuration options and it will take effect upon restart.***
+ ![](https://github.com/AiAe-156/BetterPeakVoiceFix/blob/master/%E8%8B%B1%E6%96%87%E7%89%880.3.4%E6%BC%94%E7%A4%BA%E5%9B%BE%E7%89%87.png?raw=true)
 
 ## 2. UI
 

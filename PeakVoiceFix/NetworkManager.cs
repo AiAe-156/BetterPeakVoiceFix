@@ -160,19 +160,61 @@ namespace PeakVoiceFix
             PlayerCache[actorNumber].LastSeenTime = Time.unscaledTime;
         }
 
-        public static bool IsGhost(int actorNumber)
+        public static bool IsGhost(int voiceActorNumber)
         {
             if (PhotonNetwork.CurrentRoom == null) return true;
-            return PhotonNetwork.CurrentRoom.GetPlayer(actorNumber) == null;
+
+            // Actor 直接命中优先：这是历史稳定逻辑，也能避免单人房误判。
+            if (PhotonNetwork.CurrentRoom.GetPlayer(voiceActorNumber) != null) return false;
+
+            if (punVoice == null || punVoice.Client == null || punVoice.Client.CurrentRoom == null) return true;
+            var voicePlayers = punVoice.Client.CurrentRoom.Players;
+            if (!voicePlayers.TryGetValue(voiceActorNumber, out var voicePlayer)) return true;
+
+            // 仅当 Actor 失配时再尝试 UserId 兜底。
+            string visitorUserId = voicePlayer.UserId;
+            if (string.IsNullOrEmpty(visitorUserId)) return true;
+
+            foreach (var gp in PhotonNetwork.PlayerList)
+            {
+                if (!string.IsNullOrEmpty(gp.UserId) && gp.UserId == visitorUserId) return false;
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// 判断游戏房间中的某个玩家是否也在语音房间中（Actor 优先，UserId 兜底）。
+        /// </summary>
+        public static bool IsPlayerInVoiceRoom(int gameActorNumber)
+        {
+            if (punVoice == null || punVoice.Client == null || punVoice.Client.CurrentRoom == null) return false;
+            if (PhotonNetwork.CurrentRoom == null) return false;
+            var gamePlayer = PhotonNetwork.CurrentRoom.GetPlayer(gameActorNumber);
+            if (gamePlayer == null) return false;
+
+            // 先看 Actor 是否直接存在。
+            if (punVoice.Client.CurrentRoom.Players.ContainsKey(gameActorNumber)) return true;
+
+            // Actor 不命中时，再尝试 UserId 兜底。
+            string targetUserId = gamePlayer.UserId;
+            if (string.IsNullOrEmpty(targetUserId)) return false;
+
+            foreach (var kvp in punVoice.Client.CurrentRoom.Players)
+            {
+                if (!string.IsNullOrEmpty(kvp.Value.UserId) && kvp.Value.UserId == targetUserId) return true;
+            }
+            return false;
         }
 
         public static int GetGhostCount()
         {
             if (punVoice == null || punVoice.Client == null || punVoice.Client.CurrentRoom == null) return 0;
+            if (PhotonNetwork.CurrentRoom != null && PhotonNetwork.CurrentRoom.PlayerCount <= 1) return 0;
+
             int count = 0;
-            foreach (var id in punVoice.Client.CurrentRoom.Players.Keys)
+            foreach (var voiceActor in punVoice.Client.CurrentRoom.Players.Keys)
             {
-                if (IsGhost(id)) count++;
+                if (IsGhost(voiceActor)) count++;
             }
             return count;
         }
