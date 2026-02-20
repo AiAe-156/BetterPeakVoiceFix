@@ -273,7 +273,6 @@ namespace PeakVoiceFix
 
         public static void BroadcastLog(string message)
         {
-            if (VoiceFix.EnableDebugLogs != null && VoiceFix.EnableDebugLogs.Value) VoiceFix.logger.LogInfo(message);
             string myName = GetPlayerName(PhotonNetwork.LocalPlayer.ActorNumber);
             if (VoiceUIManager.Instance != null) VoiceUIManager.Instance.AddLog(myName, message, true);
 

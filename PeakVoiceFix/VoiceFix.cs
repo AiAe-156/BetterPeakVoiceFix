@@ -44,11 +44,10 @@ namespace PeakVoiceFix
         public static ConfigEntry<bool> AutoHideNormal;
         public static ConfigEntry<bool> ShowPingInNormal;
         public static ConfigEntry<bool> HideOnMenu;
-        public static ConfigEntry<bool> EnableDebugLogs;
         public static ConfigEntry<bool> EnableVirtualTestPlayer;
         public static ConfigEntry<string> TestPlayerName;
 
-        public const string PLUGIN_VERSION = "1.0.1";
+        public const string PLUGIN_VERSION = "1.0.2";
         public const string MOD_VERSION = "v" + PLUGIN_VERSION;
 
         void Awake()
@@ -99,7 +98,6 @@ namespace PeakVoiceFix
             AutoHideNormal = Config.Bind(catAdv, L.Get("cfgn_auto_hide"), true, L.Get("cfg_auto_hide"));
             ShowPingInNormal = Config.Bind(catAdv, L.Get("cfgn_show_ping"), true, L.Get("cfg_show_ping"));
             HideOnMenu = Config.Bind(catAdv, L.Get("cfgn_hide_menu"), true, L.Get("cfg_hide_menu"));
-            EnableDebugLogs = Config.Bind(catAdv, L.Get("cfgn_debug_log"), false, L.Get("cfg_debug_log"));
 
             EnableVirtualTestPlayer = Config.Bind(catAdv, L.Get("cfgn_virtual_player"), false, L.Get("cfg_virtual_player"));
             TestPlayerName = Config.Bind(catAdv, L.Get("cfgn_virtual_name"), "1234567891012141618202224262830323436", L.Get("cfg_virtual_name"));

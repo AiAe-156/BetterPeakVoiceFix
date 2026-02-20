@@ -4,6 +4,15 @@
 * text=auto
 
 ###############################################################################
+# Enforce stable line endings for source/build files to reduce patch mismatch
+# during apply/revert operations.
+###############################################################################
+*.cs      text eol=crlf
+*.sln     text eol=crlf
+*.csproj  text eol=crlf
+*.ps1     text eol=crlf
+
+###############################################################################
 # Set default behavior for command prompt diff.
 #
 # This is need for earlier builds of msysgit that does not have it on by

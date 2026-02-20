@@ -1,4 +1,4 @@
-**Version: v1.0.0** | **Game Version: PEAK 1.54a**  |  [👉中文说明和更新日志](https://www.yuque.com/u56076526/pighgl/tikdgc470dm0wmgn?singleDoc#)
+﻿**Version: v1.0.2** | **Game Version: PEAK 1.54a**  |  [👉中文说明和更新日志](https://www.yuque.com/u56076526/pighgl/tikdgc470dm0wmgn?singleDoc#)
 
 ## 1. Mod Overview
 
@@ -210,3 +210,4 @@ A: This is the **25-second grace period**. Connecting to voice takes time; the m
 A: You should try manual disconnection/reconnection only when you are displayed as **[Isolated]** or **[Disconnected]**. If it still doesn't work, please restart the game and Steam, check your network, or check your mods (especially `LocalMultiplayer`).
 
 To be honest,I'm a novice. I used AI to assist me in organizing the code and the documentation. After nearly one month of testing in a multi-person room (8~12 player), the current version is now basically stable.
+

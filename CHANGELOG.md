@@ -1,5 +1,7 @@
-1.0.1
+1.0.2
 - Fix the layout of changelog.md & mainfest.json
+- Fixed issues related to ID drift.
+- Removed the EnableDebugLogs configuration option.
 
 1.0.0
 - Breaking Change: Merged the Chinese and English editions into a single release for easier maintenance; language can now be selected in config and takes effect after restart.
@@ -31,3 +33,4 @@
 - Updated `README.md` documentation.
 
 0.3.4 Released
+
