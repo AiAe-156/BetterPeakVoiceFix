@@ -1,8 +1,8 @@
-﻿**Version: v1.0.2** | **Game Version: PEAK 1.54a**  |  [👉中文说明和更新日志](https://www.yuque.com/u56076526/pighgl/tikdgc470dm0wmgn?singleDoc#)
+**Version: v1.0.4** | **Game Version: PEAK 1.54a**  |  [👉中文说明和更新日志](https://www.yuque.com/u56076526/pighgl/tikdgc470dm0wmgn?singleDoc#)
 
 ## 1. Mod Overview
 
-- Based on the `PEAK VOICE` FIX from @chuxia,supports switching between Chinese and English. It includes optimized reconnection logic and additional monitoring features. Press the `J` to view the voice status of all players in the room. If you experience voice issues, use `ALT+K` to manually disconnect and reconnect (this can only be done once if the connection is stuck for over 20 seconds).
+- Based on the `PEAK VOICE FIX` from @chuxia,supports switching between Chinese and English. It includes optimized reconnection logic and additional monitoring features. Press the `J` to view the voice status of all players in the room. If you experience voice issues, use `ALT+K` to manually disconnect and reconnect (this can only be done once if the connection is stuck for over 20 seconds).
 - For the host's voice server broadcast to work, **both** the **host and clients** must have the mod ​**installed**​. If only one party has the mod, its functionality will be limited to viewing the team's voice status and manual reconnection.
 - ***I have made some optimizations to the text in version 0.3.5. The previous expressions like "MY IP" could indeed lead people to mistakenly believe that their IP would be exposed.***
 - ***To facilitate maintenance, the Chinese and English versions will be combined and re-released. You can select the language in the configuration options and it will take effect upon restart.***

@@ -1,3 +1,14 @@
+1.0.4
+- Voice status now understands mixed-mod lobbies: each player is judged by whether they actually run the mod, so a modded-but-disconnected player is no longer mislabeled as "no mod".
+- Non-modded players are inferred from the voice room — [Connected], [Mismatched] (in voice but ID-drifted), or [Disconnected].
+- Fixed the false "Isolated" status and the contradictory "all Synced yet N mismatched": rows and counts now come from one consistent check.
+- Players who leave are removed from the list immediately instead of lingering as "Left".
+- The simple overlay can auto-hide again in mixed-mod lobbies.
+
+1.0.3
+- Performance: removed several per-frame scene scans and reduced overlay overhead (it now redraws only when its content changes) — lower CPU/GC cost, mainly in menus and during voice trouble.
+- No feature or gameplay changes.
+
 1.0.2
 - Fix the layout of changelog.md & mainfest.json
 - Fixed issues related to ID drift.

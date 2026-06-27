@@ -17,10 +17,16 @@ namespace PeakVoiceFix
     [BepInPlugin("chuxiaaaa.Aiae.BetterPeakVoiceFix", "BetterPeakVoiceFix", PLUGIN_VERSION)]
     public class VoiceFix : BaseUnityPlugin
     {
-        public static KeyCode GetToggleKey()
+        private static KeyCode _cachedToggleKey = KeyCode.J;
+        public static KeyCode GetToggleKey() => _cachedToggleKey;
+
+        // 把字符串->KeyCode 的解析从每帧调用移到配置加载/变更时一次，Update 里直接读缓存。
+        private static void RefreshToggleKey()
         {
-            if (Enum.TryParse<KeyCode>(ToggleUIKey.Value, true, out var key)) return key;
-            return KeyCode.J;
+            if (ToggleUIKey != null && Enum.TryParse<KeyCode>(ToggleUIKey.Value, true, out var key))
+                _cachedToggleKey = key;
+            else
+                _cachedToggleKey = KeyCode.J;
         }
 
         public static VoiceFix Instance;
@@ -47,7 +53,7 @@ namespace PeakVoiceFix
         public static ConfigEntry<bool> EnableVirtualTestPlayer;
         public static ConfigEntry<string> TestPlayerName;
 
-        public const string PLUGIN_VERSION = "1.0.2";
+        public const string PLUGIN_VERSION = "1.0.4";
         public const string MOD_VERSION = "v" + PLUGIN_VERSION;
 
         void Awake()
@@ -70,6 +76,8 @@ namespace PeakVoiceFix
             string catUI = L.Get("cfg_cat_ui");
 
             ToggleUIKey = Config.Bind(catUI, L.Get("cfgn_toggle_key"), KeyCode.J.ToString(), L.Get("cfg_toggle_key"));
+            RefreshToggleKey();
+            ToggleUIKey.SettingChanged += (s, e) => RefreshToggleKey();
 
             // 使用英文 Key，中文/英文 Description
             UIPositionSide = Config.Bind(catUI, L.Get("cfgn_ui_position"), UIPositionEnum.Right,

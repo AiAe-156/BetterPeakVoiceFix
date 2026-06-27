@@ -60,10 +60,18 @@ namespace PeakVoiceFix
         private static float lastSOSTime = 0f;
         private static float nextSummaryLogTime = 0f;
         private static bool wasInRoom = false;
+        private static float nextVoiceClientFindTime = 0f;
+        private static float nextSOSManageTime = 0f;
+        private static int lastPlayerCount = 0;
+        // Scavenge 失败的 actor -> 上次尝试时间，用于负缓存，避免每帧重复全场景扫描。
+        private static readonly Dictionary<int, float> scavengeFailTime = new Dictionary<int, float>();
 
         private const float SCAN_INTERVAL = 30f;
         private const float CACHE_TTL = 180f;
         private const float PING_PUBLISH_INTERVAL = 89f;
+        private const float VOICE_CLIENT_FIND_INTERVAL = 1f;
+        private const float SOS_MANAGE_INTERVAL = 0.5f;
+        private const float SCAVENGE_RETRY_INTERVAL = 10f;
         private const string PROP_IP = "PVF_IP";
         private const string PROP_PING = "PVF_Ping";
 
@@ -113,11 +121,19 @@ namespace PeakVoiceFix
 
             if (resultName == "Unknown" || string.IsNullOrEmpty(resultName))
             {
-                string scavengedName = ScavengeNameFromScene(actorNumber);
-                if (!string.IsNullOrEmpty(scavengedName))
+                // ScavengeNameFromScene 会做全场景 FindObjectsOfType<PhotonView>，开销大。
+                // 失败后写负缓存，SCAVENGE_RETRY_INTERVAL 秒内不再重扫，避免热路径（如每帧 ManageSOSList）反复全场景扫描。
+                if (!scavengeFailTime.TryGetValue(actorNumber, out float lastScavenge)
+                    || Time.unscaledTime - lastScavenge > SCAVENGE_RETRY_INTERVAL)
                 {
-                    UpdatePlayerCache(actorNumber, scavengedName);
-                    return scavengedName;
+                    string scavengedName = ScavengeNameFromScene(actorNumber);
+                    if (!string.IsNullOrEmpty(scavengedName))
+                    {
+                        scavengeFailTime.Remove(actorNumber);
+                        UpdatePlayerCache(actorNumber, scavengedName);
+                        return scavengedName;
+                    }
+                    scavengeFailTime[actorNumber] = Time.unscaledTime;
                 }
             }
 
@@ -129,7 +145,11 @@ namespace PeakVoiceFix
         {
             try
             {
+                // 全场景扫描，开销大；此 Unity 版本无 FindObjectsByType(FindObjectSortMode) 重载，
+                // 故仍用 FindObjectsOfType，其调用频率已由上层 scavengeFailTime 负缓存兜住。
+#pragma warning disable CS0618
                 var allViews = UnityEngine.Object.FindObjectsOfType<PhotonView>();
+#pragma warning restore CS0618
                 foreach (var view in allViews)
                 {
                     if (view == null || view.OwnerActorNr != actorNumber) continue;
@@ -219,14 +239,43 @@ namespace PeakVoiceFix
             return count;
         }
 
+        /// <summary>
+        /// 判断玩家是否装了本 mod：本机恒为是；远端看是否广播过 PVF_Ping 键（断线时也带，故 key 存在即装）
+        /// 或缓存里收到过 STATE 事件带的 ModVersion。与 IP 值脱钩，避免"装了但断线发空 IP"被误判为没装。
+        /// </summary>
+        public static bool IsModUser(Photon.Realtime.Player p)
+        {
+            if (p == null) return false;
+            if (p.IsLocal) return true;
+            if (p.CustomProperties != null && p.CustomProperties.ContainsKey(PROP_PING)) return true;
+            if (PlayerCache.TryGetValue(p.ActorNumber, out var ce) && !string.IsNullOrEmpty(ce.ModVersion)) return true;
+            return false;
+        }
+
+        public static bool IsModUser(int actorNumber)
+        {
+            var p = PhotonNetwork.CurrentRoom != null ? PhotonNetwork.CurrentRoom.GetPlayer(actorNumber) : null;
+            if (p != null) return IsModUser(p);
+            if (PlayerCache.TryGetValue(actorNumber, out var ce) && !string.IsNullOrEmpty(ce.ModVersion)) return true;
+            return false;
+        }
+
+        /// <summary>
+        /// 玩家确认离开游戏房间（不在 CurrentRoom 里）时，立即清掉其缓存/SOS/负缓存，
+        /// 避免残留数据继续参与多数派统计与显示。由 SystemUpdate 在人数下降时调用。
+        /// </summary>
+        private static void PurgeDepartedActors()
+        {
+            if (PhotonNetwork.CurrentRoom == null) return;
+            var gone = new List<int>();
+            foreach (var k in PlayerCache.Keys)
+                if (PhotonNetwork.CurrentRoom.GetPlayer(k) == null) gone.Add(k);
+            foreach (var k in gone) { PlayerCache.Remove(k); scavengeFailTime.Remove(k); }
+            ActiveSOSList.RemoveAll(s => PhotonNetwork.CurrentRoom.GetPlayer(s.ActorNumber) == null);
+        }
+
         public static void SystemUpdate()
         {
-            if (punVoice == null)
-            {
-                var obj = GameObject.Find("VoiceClient");
-                if (obj != null) punVoice = obj.GetComponent<PunVoiceClient>();
-            }
-
             if (!PhotonNetwork.InRoom)
             {
                 if (wasInRoom) ResetRoomScopedState();
@@ -234,6 +283,19 @@ namespace PeakVoiceFix
                 return;
             }
             wasInRoom = true;
+
+            // 离场即时清除：检测到游戏房人数下降，立刻清理离场玩家的缓存/SOS。
+            int curPlayerCount = PhotonNetwork.PlayerList != null ? PhotonNetwork.PlayerList.Length : 0;
+            if (curPlayerCount < lastPlayerCount) PurgeDepartedActors();
+            lastPlayerCount = curPlayerCount;
+
+            // 仅在房间内、按节流间隔查找 VoiceClient，避免菜单/连接前每帧全场景 GameObject.Find。
+            if (punVoice == null && Time.unscaledTime >= nextVoiceClientFindTime)
+            {
+                nextVoiceClientFindTime = Time.unscaledTime + VOICE_CLIENT_FIND_INTERVAL;
+                var obj = GameObject.Find("VoiceClient");
+                if (obj != null) punVoice = obj.GetComponent<PunVoiceClient>();
+            }
 
             if (punVoice != null && punVoice.Client != null)
             {
@@ -344,6 +406,12 @@ namespace PeakVoiceFix
 
         private static void ManageSOSList()
         {
+            // 无 SOS 时直接返回；有 SOS 时也节流到 ~0.5s 一次，
+            // 避免每帧对每个 SOS 调用 GetPlayerName（其兜底可能触发全场景扫描）。
+            if (ActiveSOSList.Count == 0) return;
+            if (Time.unscaledTime < nextSOSManageTime) return;
+            nextSOSManageTime = Time.unscaledTime + SOS_MANAGE_INTERVAL;
+
             for (int i = ActiveSOSList.Count - 1; i >= 0; i--)
             {
                 var sos = ActiveSOSList[i];
@@ -637,6 +705,10 @@ namespace PeakVoiceFix
             lastPingPublishTime = 0f;
             lastSOSTime = 0f;
             nextSummaryLogTime = 0f;
+            nextVoiceClientFindTime = 0f;
+            nextSOSManageTime = 0f;
+            lastPlayerCount = 0;
+            scavengeFailTime.Clear();
         }
     }
 }
