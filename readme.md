@@ -30,19 +30,12 @@ It helps detect and recover common voice issues such as failed voice connections
 ---
 
 ## UI Preview
-
-![BetterPeakVoiceFix UI](https://raw.githubusercontent.com/AiAe-156/BetterPeakVoiceFix/master/%E5%9B%BE%E7%89%87/icon0.png)
-
-![BetterPeakVoiceFix UI](https://raw.githubusercontent.com/AiAe-156/BetterPeakVoiceFix/master/%E5%9B%BE%E7%89%87/icon2.png)
-
-<details>
-<summary>Legacy UI screenshot</summary>
-
-<br>
-
 ![Legacy English UI](https://raw.githubusercontent.com/AiAe-156/BetterPeakVoiceFix/master/%E5%9B%BE%E7%89%87/%E8%8B%B1%E6%96%87%E7%89%880.3.4%E6%BC%94%E7%A4%BA%E5%9B%BE%E7%89%87.png)
 
-</details>
+![BetterPeakVoiceFix UI](https://raw.githubusercontent.com/AiAe-156/BetterPeakVoiceFix/master/%E5%9B%BE%E7%89%87/1.1.3%20中文.png)
+
+![BetterPeakVoiceFix UI](https://raw.githubusercontent.com/AiAe-156/BetterPeakVoiceFix/master/%E5%9B%BE%E7%89%87/1.1.3%20中文调试控制台.png)
+
 
 ---
 
@@ -230,18 +223,11 @@ PEAK 联机语音诊断与修复模组，基于 `PEAK VOICE FIX` 继续开发。
 
 ## 界面预览
 
-![BetterPeakVoiceFix UI](https://raw.githubusercontent.com/AiAe-156/BetterPeakVoiceFix/master/%E5%9B%BE%E7%89%87/icon0.png)
+![Legacy English UI](https://raw.githubusercontent.com/AiAe-156/BetterPeakVoiceFix/master/%E5%9B%BE%E7%89%87/%E8%8B%B1%E6%96%87%E7%89%880.3.4%E6%BC%94%E7%A4%BA%E5%9B%BE%E7%89%87.png)
 
-![BetterPeakVoiceFix UI](https://raw.githubusercontent.com/AiAe-156/BetterPeakVoiceFix/master/%E5%9B%BE%E7%89%87/icon2.png)
+![BetterPeakVoiceFix UI](https://raw.githubusercontent.com/AiAe-156/BetterPeakVoiceFix/master/%E5%9B%BE%E7%89%87/1.1.3%20中文.png)
 
-<details>
-<summary>旧版界面演示</summary>
-
-<br>
-
-![旧版英文界面](https://raw.githubusercontent.com/AiAe-156/BetterPeakVoiceFix/master/%E5%9B%BE%E7%89%87/%E8%8B%B1%E6%96%87%E7%89%880.3.4%E6%BC%94%E7%A4%BA%E5%9B%BE%E7%89%87.png)
-
-</details>
+![BetterPeakVoiceFix UI](https://raw.githubusercontent.com/AiAe-156/BetterPeakVoiceFix/master/%E5%9B%BE%E7%89%87/1.1.3%20中文调试控制台.png)
 
 ---
 
