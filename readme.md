@@ -1,224 +1,395 @@
-**Version: v1.1.3** | **Build target: PEAK 2.4.c (multiplayer checks pending)**  |  [👉中文说明和更新日志](https://www.yuque.com/u56076526/pighgl/tikdgc470dm0wmgn?singleDoc#)
+<a id="english"></a>
 
-### 本机语音状态恢复 / Local voice state recovery
+# BetterPeakVoiceFix
 
-- 自动恢复远端玩家失效的语音状态引用，默认开启；面板关闭时仍每 0.5 秒检测。只更新引用，不主动修改静音、屏蔽或通信权限。
-- 异常显示在玩家第二行，不需要 Pro 模式；简易面板也会列出受影响玩家及第二行提示。恢复后显示“语音状态已恢复”8 秒，这不代表已确认收到音频。
-- 不依赖 CrossplayStutterFix（CSF），也不要求主机或队友安装。装有 CSF 时仍使用同一套按需恢复逻辑，不替换它的补丁；共存效果待实机验证。
-- 修复范围仅为本机语音组件的失效引用，不修复整个角色注册表，不处理网络断流，也不保证所有失声问题都能恢复。配置中关闭自动恢复后，仍保留异常提示。
-- Restores invalid remote-player voice state references locally every 0.5 seconds, even with the overlay hidden. Enabled by default; does not explicitly change mute, block or communication permission flags.
-- Status appears on the player's second line without Pro mode, and affected players also appear in the simple overlay. A restoration notice lasts 8 seconds; it does not confirm incoming audio.
-- No CSF, host or peer installation is required. With CSF installed, the same recovery runs only when needed and does not replace CSF patches. In-game coexistence checks are pending. This repairs voice references, not the whole character registry or network failures.
+**English** | [中文](#中文说明)
 
-## 1. Mod Overview
+A PEAK multiplayer voice diagnostics and recovery mod, based on `PEAK VOICE FIX`.
 
-- Based on the `PEAK VOICE FIX` from @chuxia,supports switching between Chinese and English. It includes optimized reconnection logic and additional monitoring features. Press the `J` to view the voice status of all players in the room. If you experience voice issues, use `ALT+K` to manually disconnect and reconnect (this can only be done once if the connection is stuck for over 20 seconds).
-- For the host's voice server broadcast to work, **both** the **host and clients** must have the mod ​**installed**​. If only one party has the mod, its functionality will be limited to viewing the team's voice status and manual reconnection.
-- ***I have made some optimizations to the text in version 0.3.5. The previous expressions like "MY IP" could indeed lead people to mistakenly believe that their IP would be exposed.***
-- ***To facilitate maintenance, the Chinese and English versions will be combined and re-released. You can select the language in the configuration options and it will take effect upon restart.***
- ![](https://github.com/AiAe-156/BetterPeakVoiceFix/blob/master/%E8%8B%B1%E6%96%87%E7%89%880.3.4%E6%BC%94%E7%A4%BA%E5%9B%BE%E7%89%87.png?raw=true)
+It helps detect and recover common voice issues such as failed voice connections, players landing on different voice servers, Actor ID drift after reconnecting, and invalid local voice-state references.
 
-## 2. UI
-
-### A. Simple Overlay UI (Default: On)
-
-A small status bar displayed on the screen (default: right side).
-
-* **Local Voice**: Displays current connection status (e.g., **Connected** 🟢).
-* **Voice Connection Count**: Format is `n/N`.
-  * Automatically hides when everyone is perfectly connected with no misalignment (Configurable).
-* Displays notifications when a player's status changes.
-
-### B. Detailed Information Panel (Toggle with J)
-
-This is the core window of the mod, containing three sections of information.
-
-#### ① Top: Connection Status & IP
-
-* **Local (Voice) Server IP**: The voice server address you are currently connected to.
-* **Host (Voice) Server IP**: The voice server address the room host is connected to.
-  * **[Sync]** 🟢: You and the host are on the same channel; you can hear each other.
-  * **[Abnormal]** 🔴: You are on a different channel from the host (Status: "Isolated"). Reconnection is required.
-
-#### ② Middle: Player List Status (Key Feature)
-
-Each row represents a player in the game. The mod assigns different status tags via an intelligent algorithm:
-
-| **Status Tag** | **Color** | **Trigger Condition & Meaning** |
-| :--- | :--- | :--- |
-| **[Connected]** | **Green** 🟢 | **Perfect State**. ID matches, and voice is in the room. |
-| **[Misaligned]** | **Pale Green** 🟢 | **v0.3.4 Core Feature**. The player appears disconnected, but a "Nameless Ghost" occupies a voice slot. **Meaning**: Their voice is likely **working**, but the ID is stuck. **Do NOT ask them to reconnect.** |
-| **[Connecting]** | **Yellow** 🟡 | Player just joined (first 25s) or is verifying. Please wait patiently for it to turn green. |
-| **[Disconnected]** | **Red** 🔴 | Joined over 25s ago, and there is no corresponding ghost in the voice room. **Meaning**: Completely failed to connect; cannot hear or speak. Needs to press `Alt + K`. |
-| **[Isolated]** | **Yellow** 🟡 | Local client connected to the wrong voice server. Different servers cannot communicate with each other. |
-
-#### ③ Top/Bottom: Smart Statistics Bar
-
-Display Format: `n` / `N` `(m ID Misaligned)`
-
-* **n (Current Voice Count)**: Sum of **Normal Connections** + **Misaligned (Ghost) Connections**.
-  * If **n = N** (Full): Displayed in **Green** 🟢.
-  * If **Misalignment exists**: Displayed in **Pale Green** 🟢.
-  * If **n < N** (Not Full): Displayed in **Yellow** 🟡.
-  * If **n = 1** (Isolated): Displayed in **Red** 🔴.
-* **N (Total Game Players)**: Total number of players currently in the room.
-* **(m ID Misaligned)**: Only displayed when ghost connections are detected, indicating how many people are in a "Misaligned" state.
+> IP addresses shown by the overlay are **Photon voice server addresses**, not players' real IP addresses.
 
 ---
 
-### C. Debug Console (Press Alt + J)
+## Features
 
-Intended for advanced users to view raw data streams.
-
-* **Data Columns**: `ID | Name | IP | Ver | [Status]`
-* **[Ghost] Tag**: Clearly identifies which IDs are residual "dead bodies" (stale data).
-* **Ver**: Displays the mod version installed by the other player (e.g., `v0.3.4`; requires the other player to also have this version).
-* **Function Buttons**: Supports one-click log export to a file for bug reporting.
+| Feature | Description |
+|---|---|
+| Voice status overlay | Shows each player's current voice status in real time |
+| Game / Voice ping | Displays Photon game-room ping and Photon Voice ping separately |
+| Cross-server detection | Detects players who are not on the same voice server |
+| Voice state recovery | Repairs invalid local voice-state references for remote players |
+| Auto / manual reconnect | Retries voice connections when a connection becomes abnormal |
+| Actor drift detection | Recognizes game/voice Actor ID mismatch after players reconnect |
+| Region diagnostics | Shows game region, voice region and regional latency |
+| Photon AppId guard | Prevents other mods from accidentally replacing PEAK's Photon AppIds |
+| Room-code fixes | Fixes some HK room-code parsing / region-switch timing issues |
+| Steam invite fixes | Adds invite retry handling and UTF-8 room-name support |
 
 ---
 
-## 3. Core Features
+## UI Preview
 
-### Connection & Synchronization Logic
+![BetterPeakVoiceFix UI](https://raw.githubusercontent.com/AiAe-156/BetterPeakVoiceFix/master/%E5%9B%BE%E7%89%87/icon0.png)
 
-This mod is not a simple "Reconnector"; it is a distributed voice coordination system based on **PUN (Photon Unity Networking)**. It uses a rigorous decision tree to ensure all players eventually reach the same destination.
+![BetterPeakVoiceFix UI](https://raw.githubusercontent.com/AiAe-156/BetterPeakVoiceFix/master/%E5%9B%BE%E7%89%87/icon2.png)
 
-#### A. Host: Lighthouse Broadcast Mechanism
+<details>
+<summary>Legacy UI screenshot</summary>
 
-The Host is the reference point for the voice network.
+<br>
 
-* **Mechanism**: The Host client scans its own voice connection status at high frequency (every second). Once connected, the mod writes the current **Voice Server IP** into the Host's **PUN Player Custom Properties (`PVF_IP`)**.
-* **Synchronization**: This property is synced across the network. This means any client in the room with the mod installed can read the Host's current voice IP in real-time.
-* **Change Broadcast**: If the Host switches voice servers due to network fluctuation, the mod immediately updates the property and broadcasts a log: "Host IP Changed: Old -> New", guiding all clients to follow.
+![Legacy English UI](https://raw.githubusercontent.com/AiAe-156/BetterPeakVoiceFix/master/%E5%9B%BE%E7%89%87/%E8%8B%B1%E6%96%87%E7%89%880.3.4%E6%BC%94%E7%A4%BA%E5%9B%BE%E7%89%87.png)
 
-#### B. Client: Intelligent Decision Tree
+</details>
 
-Clients do not blindly follow the Host. Instead, they use a **"Majority Priority"** intelligent decision logic to prevent the whole team from failing if the Host drops alone.
+---
 
-**When a Client needs to reconnect, it executes the following logic:**
+## Status Overlay
 
-```plain
-[Start Reconnection Decision]
-      │
-      ▼
-1. 【Majority Rule】
-   Count the voice IPs of all players in the cache.
-   IF (A certain IP has count ≥ 2 AND is the majority)
-      └─ Decision: Connect to this "Majority IP" (Follow the crowd)
-      
-      ▼ (If everyone is scattered)
-      
-2. 【Follow Host】
-   Read the Host's PVF_IP property.
-   IF (Host has a valid IP)
-      └─ Decision: Connect to Host's IP
-      
-      ▼ (If Host is also disconnected)
-      
-3. 【Blind Connect / Auto】
-   Do not specify an IP; let Photon assign automatically.
-   └─ Decision: Leave it to fate (Auto)
+Press `J` to cycle:
+
+```text
+Off → Simple → Detail → Off
 ```
 
-**Significance**: This logic ensures that even if the Host disconnects, the remaining players can provide broadcasting functions for late joiners (assuming at least two people in the room have the mod, and the new player also has the mod).
+The detailed panel shows each player's status and:
 
-### SOS & Snapshot Cache
+```text
+Room - Voice
+182ms - 179ms
+```
 
-#### A. Snapshot Cache
+The left value is **game-room ping**, and the right value is **Photon Voice ping**.
 
-The mod maintains a local `PlayerCache` (Roster).
+| Status | Meaning |
+|---|---|
+| **[Local]** | Your own player |
+| **[Synced]** | The player has BVF and reports the same voice server as you |
+| **[Connected]** | The player does not report BVF data, but is confirmed to be in the current voice room |
+| **[Mismatch]** | The player is still in voice, but game and voice Actor IDs cannot be mapped cleanly; voice usually still works |
+| **[Connecting]** | Voice is still connecting / authenticating, or the player is inside the join grace period |
+| **[Cross-server]** | The player is on a different voice server and cannot normally communicate with you |
+| **[Disconnected]** | The player is not currently detected in the voice room |
 
-* **Function**: PUN player lists sometimes vanish instantly due to network fluctuations (causing data loss). The local cache "remembers" the last known **Name**, **IP**, **Version**, and **Status** of every player.
-* **Value**: This is why the `Alt + J` panel can still show a player's "Last Known IP" and "Ghost Status" even after they drop, instead of them simply disappearing.
+> **Cross-server** is more accurate than the older **Cross-region** wording. Different regions are one cause, but an abnormal split can also happen inside the same region. The in-game UI may still use the older wording.
 
-#### B. SOS Distress Signal
-
-When the mod executes an auto-reconnect or a player presses `Alt + K`, it broadcasts a data packet with **Event Code 186** to the whole room.
-
-* **Content**: `[Type: SOS, Target IP, Source IP]`
-* **Receiver Reaction**:
-  1. A warning pops up at the bottom of the UI.
-  2. Records the player's "accident scene" (where they dropped from, where they are trying to go).
-* **Practical Use**: When you see someone consistently failing to connect, checking the SOS log might reveal their "Target IP" differs from the group's "Majority IP," allowing you to immediately judge if they are on the wrong server rather than having a broken microphone.
-
-### Manual Intervention (Alt + K) Scenarios
-
-* **Scenario 1: Current Status is [Isolated]**
-  * **Action**: **Active Disconnect**.
-  * **Logic**: Calls `punVoice.Client.Disconnect()` -> Sends SOS signal "Manual Disconnect".
-  * **Purpose**: Soft restart. When you realize you are on the wrong channel, try actively disconnecting to rejoin.
-* **Scenario 2: Current Status is [Disconnected] / [Connecting]**
-  * **Action**: **Force Reconnect**.
-  * **Logic**: Immediately triggers `HandleClientLogic` -> Runs the "Intelligent Decision Tree" above -> Forces specific IP -> Initiates connection.
-  * **Loop Strategy**: If it fails 3 times consecutively, the mod gives up on the specific IP and switches to "Blind Connect Mode" to attempt a breakthrough.
-* *Known Issue: Manual switching may cause the local UI to freeze momentarily and may lead to ID misalignment (does not affect voice).*
+Players do **not** all need BetterPeakVoiceFix installed. Players with BVF can report richer voice information; players without it are detected from PEAK / Photon Voice data available locally.
 
 ---
 
-## 4. Configuration & Shortcuts
+## Voice State Recovery
 
-### ⌨️ Shortcuts
+Sometimes a player is correctly connected to the voice room but still becomes inaudible because the local remote-player voice-state reference is invalid.
 
-* **J**: Toggle UI display mode (Hidden -> Simple -> Detailed).
-* **Alt + K**: **Manual Reset (SOS)**.
-  * **Safety Mechanism**: If currently **[Connected]** / **[Misaligned]**, the first press will **Disconnect**. You must **press again** to execute a Force Reconnect.
-  * If currently **[Disconnected]**, a single press triggers direct reconnection.
-* **Alt + J**: Open/Close Debug Console.
+BetterPeakVoiceFix can detect and recover this state automatically.
 
-### ⚙️ Configuration File
+- Works even while the overlay is hidden
+- Does not change mute, block or communication-permission settings
+- Does not require the host or other players to install BVF
+- Does not depend on CrossplayStutterFix
 
-*(Path: BepInEx/config/chuxiaaaa.Aiae.BetterVoiceFix.cfg)*
-
-* **UI Settings**
-  * **UI Position**: Dropdown to select `Left` or `Right`.
-* **Network Settings**
-  * **Reconnection Timeout**: Default `25 seconds`. The max time the yellow [Connecting] status lasts after joining before turning red.
-  * **Enable ID Drift Fix**: Default `True`. Recommended to keep enabled, otherwise you may see "Unknown".
-  * **Enable Manual Reset (Alt+K)**: Default `True`. Allows forcing voice disconnection or reconnection via `Alt + K`.
-  * **Retry Interval (s)**: Cooldown time between automatic reconnection attempts.
-* **Advanced & Debug**
-  * **Enable Virtual Player**: Generates a dummy on the UI for layout testing.
-  * **Ping Alignment Offset**: Horizontal pixel offset for Ping display to align it separately to the right.
-  * **Auto Hide Simple UI**: Automatically hides the Simple Mode UI when everyone is connected normally.
-  * **Enable Debug Logs**: Outputs detailed network logs to the BepInEx console (Default: only shown in Alt+J interface).
-  * **Show Ping in Simple Mode**: Displays local latency under the Simple Mode UI.
-  * **Virtual Player Name**: Used for adjusting font size and ping offset testing.
-
-## 5. Compatibility
-
-| **Other Player's Status** | **Interaction Result** |
-| :--- | :--- |
-| **No Mod Installed** | Sync and reconnection mechanisms are ineffective, but you can see their true status (Disconnected/Connected) one-way. |
-| **Compatible PeakVoiceFix** | Theoretically, the synchronization (Broadcasting and receiving Host IP) mechanism is compatible, but the UI behaves like they have no mod. |
-| **Old Version (< v0.3.0)** | Functional. You can see their IP and connection status, but you won't see their detailed connection steps (e.g., "Verifying...") or their version number. |
-| **> v0.3.5** | Fully Functional. You can see detailed connection steps, version numbers, and IPs. |
-
-**Steam invites / BetterRoomShare (v1.1.2+):** when joining via a Steam invite, this mod reads the room name as UTF-8 instead of vanilla ASCII, so a room named in Chinese by a host running `BetterRoomShare` is received correctly and can be joined. This only affects how *your* client decodes the incoming room name — nothing is changed for the host, other players, or the send protocol, and BetterRoomShare is **not** required. Room names already turned into `?` by an older host cannot be recovered.
+A short **Voice state recovered** notice is shown after a successful recovery.
 
 ---
 
-## 6. FAQ
+## Manual Reconnect — `Alt + K`
 
-**Q: Why does the count show `10/10`, but it's followed by `(2 ID Misaligned)`?**
+`Alt + K` manually resets the Photon Voice connection.
 
-A: This means there are indeed 10 connections (Full) in the voice room. 8 are normal, and 2 are ID Misaligned.
-Because **Misaligned = Can Speak**, the total counts as full (Green/Pale Green). This is **good news**, indicating voice is working for everyone.
+It is mainly useful for occasional network glitches, a stuck Voice Client, or a one-off bad voice connection. It simply gives Photon Voice **another chance to reconnect and enter the correct voice room**.
 
-**Q: I am in [Misaligned] status. Do I need to press Alt + K to fix it?**
+For example:
 
-A: **NO.** As long as you can speak and hear others, do not touch it. [Misaligned] only means the ID doesn't match the slot, but it does not affect voice functionality. Forcing a reconnect might cause you to completely freeze or disconnect.
+```text
+HK: 400ms
+EU: 200ms
+```
 
-**Q: Why can't I see myself in the Alt + J list after joining the game?**
+If the game room is in HK, the correct voice connection still needs to use HK. `Alt + K` does not switch to EU just because EU has lower latency, and it does not improve the underlying network route.
 
-A: This means **you are the one who is misaligned**.
-The Dump list prints "IDs inside the Voice Server." Your Game ID is new, but your Voice Client is still using the old ID (Ghost). Because the old ID cannot find a corresponding player name, it might show as `[Ghost]` or be categorized into the misalignment statistics.
+---
 
-**Q: Why is everyone yellow when I first join the room?**
+## Shortcuts
 
-A: This is the **25-second grace period**. Connecting to voice takes time; the mod doesn't report errors immediately but displays the yellow [Connecting] status while waiting for data synchronization.
+| Key | Action |
+|---|---|
+| `J` | Off → Simple → Detail → Off |
+| `Alt + J` | Open / close the diagnostic console |
+| `Alt + K` | Manually reset the voice connection |
 
-**Q: When should I use Alt + K?**
+The `J` key can be changed in the config.
 
-A: You should try manual disconnection/reconnection only when you are displayed as **[Isolated]** or **[Disconnected]**. If it still doesn't work, please restart the game and Steam, check your network, or check your mods (especially `LocalMultiplayer`).
+---
 
-To be honest,I'm a novice. I used AI to assist me in organizing the code and the documentation. After nearly one month of testing in a multi-person room (8~12 player), the current version is now basically stable.
+## Diagnostic Console
+
+`Alt + J` opens the diagnostic console, which can show:
+
+- Game / voice region
+- Voice connection and server information
+- Photon AppId status
+- Region latency test
+- Voice-room player list
+- Diagnostic logs
+
+Logs can also be copied or exported for troubleshooting.
+
+---
+
+## Other Fixes
+
+| Fix | Description |
+|---|---|
+| Photon AppId Guard | Restores PEAK's original Photon AppIds if another mod overwrites them |
+| HK room codes | Fixes cases where HK room codes are parsed as the wrong region |
+| Region-switch join | Waits for the target Master Server before attempting to join |
+| Steam invite retry | Retries the room-info handshake instead of silently getting stuck |
+| UTF-8 room names | Correctly receives non-ASCII room names used by mods such as BetterRoomShare |
+
+---
+
+## Compatibility
+
+| Mod / Situation | Notes |
+|---|---|
+| Players without BVF | Supported; local status detection still works, with less detailed information |
+| CrossplayStutterFix | Can coexist; BVF voice-state recovery works independently |
+| BetterRoomShare | Compatible with related room-code and UTF-8 invite handling |
+| LocalMultiplayer | Photon AppId Guard helps prevent unintended AppId replacement |
+
+---
+
+## Config
+
+```text
+BepInEx/config/chuxiaaaa.Aiae.BetterPeakVoiceFix.cfg
+```
+
+Most users can keep the default settings.
+
+See [CHANGELOG.md](https://github.com/AiAe-156/BetterPeakVoiceFix/blob/master/CHANGELOG.md) for version history.
+
+---
+
+## FAQ
+
+### Do I need to reconnect when I see `[Mismatch]`?
+
+Usually no. It means the game-player and voice Actor IDs do not map cleanly; it does **not** necessarily mean voice is broken.
+
+### What does `[Cross-server]` mean?
+
+That player is not on the same Photon Voice server / voice room as you. This can be caused by a different voice region or by an abnormal split inside the same region.
+
+### Can `Alt + K` reduce my ping?
+
+No. It only restarts the voice connection and gives Photon another connection / allocation attempt.
+
+---
+
+## Credits
+
+Based on `PEAK VOICE FIX` by **@chuxia**.
+
+BetterPeakVoiceFix extends it with a redesigned status overlay, improved player-state detection, voice-state recovery, region diagnostics, Photon AppId protection, and room-code / Steam invite fixes.
+
+---
+
+<a id="中文说明"></a>
+
+# BetterPeakVoiceFix
+
+[English](#english) | **中文**
+
+PEAK 联机语音诊断与修复模组，基于 `PEAK VOICE FIX` 继续开发。
+
+主要用于检测和处理语音连接异常、玩家进入不同语音服务器、重连后的 Actor ID 错位，以及本机远端玩家语音状态引用失效等问题。
+
+> 面板中显示的 IP 均为 **Photon 语音服务器地址**，不是玩家真实 IP。
+
+---
+
+## 主要功能
+
+| 功能 | 说明 |
+|---|---|
+| 语音状态监控 | 实时显示房间内每名玩家的语音连接状态 |
+| 游戏 / 语音延迟 | 分别显示游戏房间 Ping 与 Photon Voice Ping |
+| 跨服检测 | 检测玩家是否进入了不同的语音服务器 |
+| 语音状态恢复 | 自动恢复本机失效的远端玩家 Voice State 引用 |
+| 自动 / 手动重连 | 语音连接异常时尝试重新建立连接 |
+| Actor 错位识别 | 识别玩家重连后游戏与语音 Actor ID 不一致的情况 |
+| 区服诊断 | 显示游戏区服、语音区服及各区域延迟 |
+| Photon AppId 守卫 | 防止其他模组错误修改 PEAK 的 Photon AppId |
+| 房间码修复 | 修复部分 HK 房间码解析与切区加入问题 |
+| Steam 邀请修复 | 增加邀请重试，并支持 UTF-8 中文房名 |
+
+---
+
+## 界面预览
+
+![BetterPeakVoiceFix UI](https://raw.githubusercontent.com/AiAe-156/BetterPeakVoiceFix/master/%E5%9B%BE%E7%89%87/icon0.png)
+
+![BetterPeakVoiceFix UI](https://raw.githubusercontent.com/AiAe-156/BetterPeakVoiceFix/master/%E5%9B%BE%E7%89%87/icon2.png)
+
+<details>
+<summary>旧版界面演示</summary>
+
+<br>
+
+![旧版英文界面](https://raw.githubusercontent.com/AiAe-156/BetterPeakVoiceFix/master/%E5%9B%BE%E7%89%87/%E8%8B%B1%E6%96%87%E7%89%880.3.4%E6%BC%94%E7%A4%BA%E5%9B%BE%E7%89%87.png)
+
+</details>
+
+---
+
+## 状态面板
+
+按 `J` 循环切换：
+
+```text
+关闭 → 简易 → 详细 → 关闭
+```
+
+详细面板会显示每名玩家的状态，以及：
+
+```text
+房间 - 语音
+182ms - 179ms
+```
+
+左侧为 **游戏房间延迟**，右侧为 **Photon Voice 延迟**。
+
+| 状态 | 含义 |
+|---|---|
+| **[本机]** | 当前玩家自己 |
+| **[同步]** | 对方安装了 BVF，并上报与本机相同的语音服务器 |
+| **[已连接]** | 对方未上报 BVF 数据，但已确认存在于当前语音房 |
+| **[错位]** | 玩家仍在语音房，但游戏与语音 Actor 无法正常对应，通常不影响语音 |
+| **[连接中]** | 正在连接 / 验证语音服务，或仍处于进房宽限期 |
+| **[跨服]** | 对方与本机不在同一个语音服务器，无法正常互通语音 |
+| **[断开]** | 当前未检测到该玩家进入语音房 |
+
+> **跨服** 比旧的 **跨区** 更准确：不同区服只是其中一种情况，同一区服内也可能因为异常分叉进入不同语音服务器。目前游戏内 UI 仍可能显示旧的“跨区”文字。
+
+整个房间**不需要所有人都安装 BetterPeakVoiceFix**。安装 BVF 的玩家能上报更完整的语音信息；未安装的玩家则通过本机能够观察到的 PEAK / Photon Voice 数据进行判断。
+
+---
+
+## 语音状态自动恢复
+
+有时玩家已经正常进入语音房，但本机保存的远端玩家语音状态引用失效，仍可能导致听不到对方。
+
+BetterPeakVoiceFix 会自动检测并尝试恢复这类异常。
+
+- 面板关闭时仍然运行
+- 不修改静音、屏蔽或通信权限
+- 不要求房主或队友安装 BVF
+- 不依赖 CrossplayStutterFix
+
+恢复成功后，面板会短暂显示 **“语音状态已恢复”**。
+
+---
+
+## `Alt + K` 手动重连
+
+`Alt + K` 用于手动重置 Photon Voice 连接。
+
+它主要适合处理偶发网络波动、Voice Client 卡死或某一次语音错连。简单来说，就是让 Photon Voice **多一次重新连接、重新进入正确语音房的机会**。
+
+例如：
+
+```text
+HK：400ms
+EU：200ms
+```
+
+如果当前游戏房位于 HK，正确的语音连接仍然需要进入 HK。`Alt + K` 不会因为 EU 延迟更低就切到 EU，也不会把本身 400ms 的网络线路优化成 200ms。
+
+---
+
+## 快捷键
+
+| 按键 | 功能 |
+|---|---|
+| `J` | 关闭 → 简易 → 详细 → 关闭 |
+| `Alt + J` | 打开 / 关闭调试控制台 |
+| `Alt + K` | 手动重置语音连接 |
+
+`J` 可以在配置文件中修改。
+
+---
+
+## 调试控制台
+
+`Alt + J` 可以查看：
+
+- 游戏 / 语音区服
+- Voice 连接与服务器信息
+- Photon AppId 状态
+- 各区延迟测试
+- 语音房玩家列表
+- 诊断日志
+
+日志支持直接复制或导出，方便排查多人房间中的语音问题。
+
+---
+
+## 其他修复
+
+| 修复 | 说明 |
+|---|---|
+| Photon AppId 守卫 | 其他模组改写 Photon AppId 时恢复 PEAK 原本的设置 |
+| HK 房间码 | 修复港服房间码被解析到错误区服的情况 |
+| 切区加入 | 等待目标 Master Server 就绪后再尝试加入房间 |
+| Steam 邀请重试 | 房间信息没有返回时自动重试，避免静默卡住 |
+| UTF-8 房名 | 正确接收 BetterRoomShare 等模组使用的中文 / 非 ASCII 房名 |
+
+---
+
+## 兼容性
+
+| 模组 / 情况 | 说明 |
+|---|---|
+| 其他玩家未安装 BVF | 可以正常联机，本机仍可判断其基本语音状态，但信息较少 |
+| CrossplayStutterFix | 可共存，BVF 的语音状态恢复独立运行 |
+| BetterRoomShare | 兼容相关房间码与 UTF-8 邀请房名处理 |
+| LocalMultiplayer | Photon AppId 守卫可避免意外改写 PEAK 的语音 AppId |
+
+---
+
+## 配置
+
+```text
+BepInEx/config/chuxiaaaa.Aiae.BetterPeakVoiceFix.cfg
+```
+
+大多数玩家保持默认设置即可。
+
+版本更新记录见 [CHANGELOG.md](https://github.com/AiAe-156/BetterPeakVoiceFix/blob/master/CHANGELOG.md)。
+
+---
+
+## FAQ
+
+### `[错位]` 需要重连吗？
+
+一般不需要。它表示游戏玩家和语音 Actor 无法精确对应，并不等于语音已经断开。
+
+### `[跨服]` 是什么意思？
+
+说明对方和你没有进入同一个 Photon Voice Server / Voice Room。可能是连接到了不同区服，也可能是在同一区服内发生异常分叉。
+
+### `Alt + K` 能降低延迟吗？
+
+不能。它只是重新建立一次语音连接，给 Photon 多一次连接 / 分配机会。
+
+---
+
+## Credits
+
+基于 `PEAK VOICE FIX` by **@chuxia** 继续开发。
+
+BetterPeakVoiceFix 在此基础上增加了新的状态面板、玩家状态识别、语音状态恢复、区服诊断、Photon AppId 保护，以及房间码 / Steam 邀请相关修复。
