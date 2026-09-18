@@ -1,14 +1,4 @@
-**Version: v1.1.3** | **Build target: PEAK 2.4.c (multiplayer checks pending)**  |  [👉中文说明和更新日志](https://www.yuque.com/u56076526/pighgl/tikdgc470dm0wmgn?singleDoc#)
-
-### 本机语音状态恢复 / Local voice state recovery
-
-- 自动恢复远端玩家失效的语音状态引用，默认开启；面板关闭时仍每 0.5 秒检测。只更新引用，不主动修改静音、屏蔽或通信权限。
-- 异常显示在玩家第二行，不需要 Pro 模式；简易面板也会列出受影响玩家及第二行提示。恢复后显示“语音状态已恢复”8 秒，这不代表已确认收到音频。
-- 不依赖 CrossplayStutterFix（CSF），也不要求主机或队友安装。装有 CSF 时仍使用同一套按需恢复逻辑，不替换它的补丁；共存效果待实机验证。
-- 修复范围仅为本机语音组件的失效引用，不修复整个角色注册表，不处理网络断流，也不保证所有失声问题都能恢复。配置中关闭自动恢复后，仍保留异常提示。
-- Restores invalid remote-player voice state references locally every 0.5 seconds, even with the overlay hidden. Enabled by default; does not explicitly change mute, block or communication permission flags.
-- Status appears on the player's second line without Pro mode, and affected players also appear in the simple overlay. A restoration notice lasts 8 seconds; it does not confirm incoming audio.
-- No CSF, host or peer installation is required. With CSF installed, the same recovery runs only when needed and does not replace CSF patches. In-game coexistence checks are pending. This repairs voice references, not the whole character registry or network failures.
+**Version: v1.1.1** | **Game Version: PEAK 2.4.b**  |  [👉中文说明和更新日志](https://www.yuque.com/u56076526/pighgl/tikdgc470dm0wmgn?singleDoc#)
 
 ## 1. Mod Overview
 
@@ -192,8 +182,6 @@ When the mod executes an auto-reconnect or a player presses `Alt + K`, it broadc
 | **Compatible PeakVoiceFix** | Theoretically, the synchronization (Broadcasting and receiving Host IP) mechanism is compatible, but the UI behaves like they have no mod. |
 | **Old Version (< v0.3.0)** | Functional. You can see their IP and connection status, but you won't see their detailed connection steps (e.g., "Verifying...") or their version number. |
 | **> v0.3.5** | Fully Functional. You can see detailed connection steps, version numbers, and IPs. |
-
-**Steam invites / BetterRoomShare (v1.1.2+):** when joining via a Steam invite, this mod reads the room name as UTF-8 instead of vanilla ASCII, so a room named in Chinese by a host running `BetterRoomShare` is received correctly and can be joined. This only affects how *your* client decodes the incoming room name — nothing is changed for the host, other players, or the send protocol, and BetterRoomShare is **not** required. Room names already turned into `?` by an older host cannot be recovered.
 
 ---
 

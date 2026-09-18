@@ -1026,11 +1026,7 @@ namespace PeakVoiceFix
             string vroom = LocalVoiceRoomName;
             if (vroom != lastDiagVoiceRoom)
             {
-                // 顺手记录实际连接用的 AppId——语音进错应用是同区同名却互不可见的元凶，
-                // 排"我孤立了"类问题时这一个字段能省一整轮排查。
-                string appid = "—";
-                try { if (punVoice != null && punVoice.Client != null && !string.IsNullOrEmpty(punVoice.Client.AppId)) appid = punVoice.Client.AppId; } catch (Exception) { }
-                DiagLog(L.Get("diag_vroom_change", lastDiagVoiceRoom ?? "—", vroom ?? "—", appid));
+                DiagLog(L.Get("diag_vroom_change", lastDiagVoiceRoom ?? "—", vroom ?? "—"));
                 lastDiagVoiceRoom = vroom;
             }
 

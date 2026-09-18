@@ -4,7 +4,7 @@
     <TargetFramework>netstandard2.1</TargetFramework>
     <AssemblyName>BetterPeakVoiceFix</AssemblyName>
     <Product>BetterPeakVoiceFix</Product>
-    <Version>1.1.3</Version>
+    <Version>1.1.2</Version>
     
     <GenerateDependencyFile>false</GenerateDependencyFile>
     <DebugType>none</DebugType> <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>

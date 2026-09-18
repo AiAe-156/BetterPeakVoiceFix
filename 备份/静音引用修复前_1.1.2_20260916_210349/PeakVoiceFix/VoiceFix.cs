@@ -45,8 +45,6 @@ namespace PeakVoiceFix
         public static ConfigEntry<float> ConnectTimeout;
         public static ConfigEntry<float> RetryInterval;
         public static ConfigEntry<bool> EnableManualReconnect;
-        public static ConfigEntry<bool> AutoRecoverVoiceState;
-        public static ConfigEntry<bool> EnableAppIdGuard;
 
         public static ConfigEntry<int> MaxTotalLength;
         public static ConfigEntry<float> LatencyOffset;
@@ -61,7 +59,7 @@ namespace PeakVoiceFix
         public static ConfigEntry<bool> WaitMasterBeforeJoin;
         public static ConfigEntry<bool> EnableInviteRetry;
 
-        public const string PLUGIN_VERSION = "1.1.3";
+        public const string PLUGIN_VERSION = "1.1.2";
         public const string MOD_VERSION = "v" + PLUGIN_VERSION;
 
         void Awake()
@@ -70,10 +68,6 @@ namespace PeakVoiceFix
             logger = Logger;
             debugLogger = new ManualLogSource("VoiceFixDebug");
             BepInEx.Logging.Logger.Sources.Add(debugLogger);
-
-            // 越早越好：此时任何场景补丁（如 LocalMultiplayer 的 NetworkConnector 钩子）
-            // 都还没机会跑，读到的 AppId 必为真值。
-            PhotonSettingsGuard.Init();
 
             // 先使用系统语言初始化一次，确保语言配置描述文字与系统环境一致。
             string detectedLanguage = L.DetectDefault();
@@ -123,8 +117,6 @@ namespace PeakVoiceFix
             ConnectTimeout = Config.Bind(catAdv, L.Get("cfgn_timeout"), 25f, L.Get("cfg_timeout"));
             RetryInterval = Config.Bind(catAdv, L.Get("cfgn_retry_interval"), 8f, L.Get("cfg_retry_interval"));
             EnableManualReconnect = Config.Bind(catAdv, L.Get("cfgn_manual_reconnect"), true, L.Get("cfg_manual_reconnect"));
-            AutoRecoverVoiceState = Config.Bind(catAdv, L.Get("cfgn_voice_recovery"), true, L.Get("cfg_voice_recovery"));
-            EnableAppIdGuard = Config.Bind(catAdv, L.Get("cfgn_appid_guard"), true, L.Get("cfg_appid_guard"));
 
             // 键名不能含 = \n \t \ " ' [ ]，否则 BepInEx 会把之后所有 Bind 一起带走。
             var regionValues = new List<string> { RegionControl.AUTO };
@@ -154,7 +146,6 @@ namespace PeakVoiceFix
             TryPatch(typeof(WaitMasterBeforeJoinPatch), "JoinRoomAndWaitForSpawn");
             TryPatch(typeof(RequestRoomIDPatch), "RequestPhotonRoomID");
             TryPatch(typeof(InviteRoomNameEncodingPatch), "HandleMessage room-name UTF-8");
-            TryPatch(typeof(VoiceConnectSettingsPatch), "ConnectUsingSettings AppId 守卫");
             RoomCodePatches.Announce();
             if (!InviteHandshake.Available)
                 logger.LogWarning("[邀请] 反射不到握手字段，邀请重试功能停用（本体可能改了字段名）");
@@ -166,8 +157,6 @@ namespace PeakVoiceFix
 
         void Update()
         {
-            VoiceStateRecovery.Update();
-            PhotonSettingsGuard.Update();
             NetworkManager.SystemUpdate();
             // 区服控制不能只在房间内跑：强制区服连不上时人还卡在主菜单，测速也常在主菜单点。
             RegionControl.Update();

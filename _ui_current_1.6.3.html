@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>BetterPeakVoiceFix 1.6.3 — 当前 UI 显示方式</title>
+<style>
+  /* 游戏内实际配色，与 VoiceUIManager.cs 常量一致 */
+  :root{
+    --green:#90EE90; --yellow:#F0E68C; --red:#FF6961;
+    --text:#dfdac2;  --gold:#ffd700;
+    --pale:#98FB98;  --ghost:#7CCD7C;
+  }
+  *{box-sizing:border-box}
+  body{
+    background:#1b1e24; color:var(--text);
+    font-family:"Microsoft YaHei",sans-serif;
+    margin:0; padding:24px;
+  }
+  h1{font-size:18px;margin:0 0 4px}
+  .sub{font-size:12px;color:#8a8f99;margin-bottom:20px}
+  h2{font-size:15px;margin:0 0 8px;color:#cfd4dc}
+  .row{display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start}
+  .col{flex:0 0 auto}
+  .note{font-size:12px;color:#8a8f99;margin-top:8px;max-width:420px;line-height:1.7}
+  .game{
+    /* 模拟游戏画面：面板锚在左上角，边距 30/80 */
+    width:460px;height:340px;position:relative;
+    background:linear-gradient(160deg,#3a5f4a,#2b3d55);
+    border-radius:6px;overflow:hidden;
+    background-image:
+      radial-gradient(circle at 70% 30%, rgba(255,255,255,.06), transparent 40%);
+  }
+  .panel{
+    position:absolute;left:30px;top:80px;
+    background:rgba(0,0,0,.55);
+    padding:10px 14px;border-radius:4px;
+    font-family:Consolas,"Microsoft YaHei",monospace;
+    line-height:1.55;white-space:pre;
+    text-shadow:0 1px 2px rgba(0,0,0,.8);
+  }
+  /* 字号层级：基准21px → 表头100% / 列表85% / 第二行70% / 顶部与快照75% */
+  .s120{font-size:25.2px}
+  .s100{font-size:21px}
+  .s85 {font-size:17.9px}
+  .s75 {font-size:15.8px}
+  .s70 {font-size:14.7px}
+  .g{color:var(--green)} .y{color:var(--yellow)} .r{color:var(--red)}
+  .t{color:var(--text)} .gold{color:var(--gold)}
+  .center{text-align:center}
+  hr.sep{border:none;border-top:1px solid var(--text);margin:4px 0;opacity:.8}
+
+  .tag{border:1px solid currentColor;border-radius:3px;padding:0 4px;font-size:.92em}
+  .legend{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;
+    font-size:13px;margin-top:14px;line-height:1.5}
+  .legend b{font-weight:600}
+  .callout{font-size:12.5px;color:#9aa1ad;border-left:3px solid #4a5568;
+    padding:6px 10px;margin-top:12px;line-height:1.8;max-width:430px;background:rgba(0,0,0,.25)}
+  .callout em{color:#cfd4dc;font-style:normal}
+  table{border-collapse:collapse;font-size:12.5px;margin-top:10px}
+  td,th{border:1px solid #3a4150;padding:3px 10px;text-align:left}
+  th{color:#cfd4dc}
+  .game.tall{height:auto;min-height:340px;width:max-content}
+  .game.tall .panel{position:static;margin:80px 30px 30px}
+  .variant{margin-top:26px}
+  .variant .game{height:auto;min-height:150px}
+</style>
+</head>
+<body>
+
+<h1>BetterPeakVoiceFix v1.6.3 — 两种 UI 当前显示方式</h1>
+<div class="sub">按 1.6.3 源码逐行还原（UpdateContent_Normal / UpdateContent_Detail）· 配色取自代码常量 · 面板锚左上角，边距 30px / 80px · 按键 J 循环：关 → 简易 → 详细</div>
+
+<div class="row">
+
+  <!-- ============ 简易模式 ============ -->
+  <div class="col">
+    <h2>① 简易模式（J 按一下）</h2>
+    <div class="game">
+      <div class="panel">
+<span class="t s100">房间/语音地区: </span><span class="t s100">eu 欧洲 / </span><span class="g s100">eu 欧洲</span><span class="g s100"> ✓</span>
+<span class="t s100">本机延迟: </span><span class="g s100">220ms</span><span class="t s100"> - </span><span class="g s100">215ms</span>
+<span class="t s100">房间情况: </span><span class="t s100">[同步:</span><span class="y s100">3/4</span><span class="t s100">] [异常:</span><span class="r s100">1</span><span class="t s100">]</span>
+      </div>
+    </div>
+    <div class="legend">
+      <b class="t">第1行</b><span class="t">本机状态：游戏区服 / 语音区服 + ✓/×（判据=IP比对，出错时括号里给原因）</span>
+      <b class="t">第2行</b><span class="t">本机延迟（可在 cfg 关掉）：房间延迟 - 语音延迟</span>
+      <b class="t">第3行</b><span class="t">房间汇总（单人房不显示）。有新玩家加入时下方再挂一行临时通知（3~10秒后消失）</span>
+    </div>
+    <div class="callout">
+      只有 3~4 行，不显示玩家列表和任何 IP。<em>显示时机</em>：机场常驻 / 有异常 / 有通知，其余场景自动隐藏（1.6.2 起 ESC 菜单也隐藏）。
+    </div>
+  </div>
+
+  <!-- ============ 详细模式 ============ -->
+  <div class="col">
+    <h2>② 详细模式（J 再按一下）</h2>
+    <div class="game tall">
+      <div class="panel">
+<div class="center s120 t">语音详细状态 (v1.6.3)</div>
+<hr class="sep">
+<span class="t s75">房间区服: eu 欧洲 (161.156.38.81:5056)</span>
+<span class="t s75">房间语音服: </span><span class="g s75">eu 欧洲</span><span class="g s75"> ✓</span><span class="t s75"> (</span><span class="g s75">195.201.94.253:5056</span><span class="t s75">)</span>
+<span class="t s75">[同步:</span><span class="y s75">3/4</span><span class="t s75">] [异常:</span><span class="r s75">1</span><span class="t s75">]</span>
+<hr class="sep">
+<span class="t s100">[状态]  玩家名</span><span class="t s100">　　　　　　　房间延迟 - 语音延迟</span>
+<span class="t s85">[</span><span class="t tag s85">本机</span><span class="t s85">]</span><span class="g s85"> AiAe</span><span class="t s85">　　　　　| </span><span class="g s85">220ms - 215ms</span>
+<span class="s70">  </span><span class="t s70">» 连接的语音服: </span><span class="g s70">eu 欧洲</span><span class="g s70"> ✓</span>
+<span class="t s85">[</span><span class="g tag s85">同步</span><span class="t s85">]</span><span class="gold s85">★</span><span class="g s85"> 房主小明</span><span class="t s85">　　 | </span><span class="g s85">50ms - 55ms</span>
+<span class="t s85">[</span><span class="g tag s85">同步</span><span class="t s85">]</span><span class="g s85"> 队友A</span><span class="t s85">　　　　　| </span><span class="g s85">100ms - 120ms</span>
+<span class="t s85">[</span><span class="r tag s85">跨区</span><span class="t s85">]</span><span class="g s85"> 队友B</span><span class="t s85">　　　　　| </span><span class="r s85">420ms - 445ms</span>
+<span class="s70">  </span><span class="t s70">» 连接的语音服: </span><span class="g s70">jp 日本</span><span class="r s70"> ×</span><span class="t s70"> (</span><span class="r s70">1.2.3.4:5056</span><span class="t s70">)</span><span class="y s70">  mod v1.0.5 过旧</span>
+<span class="t s85">[</span><span class="r tag s85">断开</span><span class="t s85">]</span><span class="g s85"> 队友C</span>
+<span class="s70">  </span><span class="y s70">» 未连入语音服</span>
+<hr class="sep">
+<span class="t s75">[缓存快照] (12秒前)</span>
+<span class="t s75">决策: </span><span class="g s75">盲连</span><span class="t s75"> → </span><span class="t s75">……</span>
+<span class="t s75">多数派区服: eu 欧洲 (3人)</span>
+<span class="t s75">重连: </span><span class="y s75">2 次 | 失败 1 | IP不符 0</span>
+<span class="t s75">语音房: 4 人在线 | 判定 3/4 | 幽灵 0</span>
+<span class="t s75">房间码: PEAK12 (eu) | 语音房名 PEAK12_voice_</span>
+<span class="t s75">强制区服: auto</span>
+<span class="t s75"> - 未连接: 队友C</span>
+<span class="t s75">[历史] 195.201.94.253:5056</span>
+      </div>
+    </div>
+    <div class="note">
+      队友B/队友C 的第二行只在需要解释时出现（连接中/跨区/断开）；同步、错位不出第二行。缓存快照整块只在「专业模式」cfg 开启时显示；上图为开启状态。房主视角：顶部两行平铺直叙、不上色不打勾（房主=金标准）。
+    </div>
+  </div>
+</div>
+
+<!-- ============ 字号层级表 ============ -->
+<table>
+  <tr><th>区块</th><th>字号（相对基准21px）</th><th>代码位置</th></tr>
+  <tr><td>标题「语音详细状态」</td><td>120% ≈ 25px</td><td>UpdateContent_Detail</td></tr>
+  <tr><td>列头 [状态]/玩家名</td><td>100% = 21px</td><td>UpdateContent_Detail</td></tr>
+  <tr><td>玩家行</td><td>85% ≈ 18px</td><td>BuildPlayerEntry</td></tr>
+  <tr><td>第二行（»）</td><td>70% ≈ 15px</td><td>BuildPlayerEntry</td></tr>
+  <tr><td>顶部两行 / 汇总 / 缓存快照</td><td>75% ≈ 16px</td><td>AppendRegionHeader / AppendCacheSnapshot</td></tr>
+  <tr><td>简易模式全部行</td><td>100% = 21px（无层级）</td><td>UpdateContent_Normal</td></tr>
+</table>
+
+<!-- ============ 异常态变体 ============ -->
+<div class="row variant">
+  <div class="col">
+    <h2>简易模式 · 异常态</h2>
+    <div class="game">
+      <div class="panel">
+<span class="t s100">房间/语音地区: </span><span class="t s100">eu 欧洲 / </span><span class="g s100">eu 欧洲</span><span class="r s100"> ×</span><span class="t s100"> (</span><span class="r s100">语音服连接错误</span><span class="t s100">)</span>
+<span class="t s100">本机延迟: </span><span class="g s100">220ms</span><span class="t s100"> - </span><span class="r s100">445ms</span>
+<span class="t s100">房间情况: </span><span class="t s100">[同步:</span><span class="y s100">2/4</span><span class="t s100">] [异常:</span><span class="r s100">2</span><span class="t s100">]</span>
+      </div>
+    </div>
+    <div class="callout">出错时：× 红 + 括号里给原因。原因有三种：<em>语音服连接错误</em>（连到别的服）/ <em>语音房内只有本机</em>（孤立）/ 无语音时显示连接进度文字（黄色）。</div>
+  </div>
+
+  <div class="col">
+    <h2>详细模式 · 顶部行的几种形态</h2>
+    <div class="game">
+      <div class="panel">
+<span class="t s75">房间语音服: </span><span class="y s75">未知（无人上报）</span><span class="r s75"> × 本机孤立</span>
+<span class="t s75">↓</span>
+<span class="t s75">房间语音服: </span><span class="y s75">jp 日本</span><span class="r s75"> ×</span><span class="t s75"> (</span><span class="y s75">203.99.12.7:5056</span><span class="t s75">)</span><span class="t s75"> 本机推定</span>
+<span class="t s75">↓</span>
+<span class="t s75">房间语音服: </span><span class="y s75">eu 欧洲</span><span class="r s75"> ×</span><span class="t s75"> (</span><span class="y s75">195.201.94.253:5056</span><span class="t s75">) 房主</span>
+<span class="t s75">↓ 房主视角（金标准，无装饰）</span>
+<span class="t s75">房间语音服: </span><span class="t s75">eu 欧洲 (195.201.94.253:5056)</span>
+      </div>
+    </div>
+    <div class="callout">来源标注有三种：<em>房主</em> / <em>1人上报</em> / <em>本机推定</em>（米白小字）。括号和斜杠永远米白不上色，只有内容按状态变色；✓/× 一律在括号前。</div>
+  </div>
+</div>
+
+</body>
+</html>

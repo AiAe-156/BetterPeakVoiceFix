@@ -109,7 +109,7 @@ namespace PeakVoiceFix
             { "cfg_retry_interval", "每次自动重连之间的冷却时间。" },
             { "cfg_manual_reconnect", "允许按 Alt+K 强制断开或重连语音。" },
             { "cfgn_voice_recovery", "自动恢复语音状态" },
-            { "cfg_voice_recovery", "自动恢复本机远端玩家失效的语音状态引用。\n原理解析：游戏为每个玩家保存一份“语音状态”（静音/屏蔽等），新旧角色交接时登记表可能丢项，而语音组件只在初始化时取一次状态——引用失效后对方在你这里被当作静音，即使语音连接正常也听不到声音。\n开启后每 0.5 秒检测：发现已初始化的远端语音组件引用失效时，先从状态登记表取回同一玩家的有效状态，登记表缺失再用该角色自身数据兜底，交还原版组件处理；不修改静音、屏蔽或通信权限。\n面板隐藏时照常检测，异常玩家行显示“语音状态异常”或“已恢复”提示。不依赖 CrossplayStutterFix（它预防登记丢失，本项负责事后修复引用），不要求主机或队友安装。关闭后仍保留异常检测与提示。恢复引用只修这一类失声原因，不保证一定听到声音。" },
+            { "cfg_voice_recovery", "自动恢复本机远端玩家失效的语音状态引用，保留静音和屏蔽选择。不依赖 CrossplayStutterFix；关闭后仍显示异常。" },
             { "line2_voice_state_missing", "语音状态异常·本机播放受阻" },
             { "line2_voice_state_recovered", "语音状态已恢复" },
             { "cfg_max_name_len", "显示名字的最大字符数。" },
@@ -144,7 +144,7 @@ namespace PeakVoiceFix
 
             // === 区服控制 ===
             { "cfgn_forced_region", "强制区服-重启生效" },
-            { "cfg_forced_region", "强制游戏连接到指定 Photon 区服。auto = 由游戏自己测速选择。\n⚠ 注意：强制区服不等于更快，地理上更近的区服路由未必更优——无加速器直连时强制 hk 甚至延迟可能翻一倍(200ms→400ms+)；该功能仅作为与区服延迟测试(Alt+J 面板中找到)功能联合调试使用。\n只影响你自己开房和主菜单连接；加入别人的房时游戏会自动切到房主所在区服，这是游戏本身的行为。可选 auto / asia / au / eu / hk / jp / sa / us / ussc / usw。改完需重启游戏。" },
+            { "cfg_forced_region", "强制游戏连接到指定 Photon 区服。auto = 由游戏自己测速选择。\n⚠ 注意：强制区服不等于更快。没有加速器时，地理上更近的区往往路由更差——实测国内裸连强制 hk 可到 400ms+，而自动选区(eu) 只有 220ms 左右。请先用 Alt+J 控制台的「测各区延迟」看实际数据再决定。\n只影响你自己开房和主菜单连接；加入别人的房时游戏会自动切到房主所在区服，这是游戏本身的行为。可选 auto / asia / au / eu / hk / jp / sa / us / ussc / usw。改完需重启游戏。" },
             { "region_worse", "[区服] 强制 {0} 实测 {1}ms，而自动选区({2}) 只有 {3}ms —— 强制反而更慢，建议改回 auto。" },
             { "region_high", "[区服] 强制 {0} 实测 {1}ms，延迟偏高。没有加速器时强制区服通常不会更快。" },
             { "region_ping_partial", "已测到的部分结果:" },
@@ -158,7 +158,7 @@ namespace PeakVoiceFix
             { "region_auto", "auto（自动测速）" },
             { "region_cache_pun", "游戏测速缓存" },
             { "region_cache_voice", "语音测速缓存" },
-            { "region_unlisted", "未收录（多为港服）" },
+            { "region_unlisted", "未知" },
             { "region_ping_title", "各区延迟" },
             { "region_ping_started", "[区服] 开始测速，约需 3-10 秒…" },
             { "region_ping_busy", "[区服] 正在测速中，请稍候。" },
@@ -211,9 +211,7 @@ namespace PeakVoiceFix
 
             // === 诊断日志（只在状态变化时记一次，不广播给队友）===
             { "diag_vregion_change", "[诊断] 本机语音区服: {0} → {1}" },
-            { "diag_vroom_change", "[诊断] 本机语音房: {0} → {1} (AppId {2})" },
-            { "diag_appid_snapshot", "[诊断] Photon AppId 快照: realtime {0} / voice {1}" },
-            { "diag_appid_restored", "[AppId守卫] 检测到 AppId 被改写: realtime {0} / voice {1} → 已还原真值" },
+            { "diag_vroom_change", "[诊断] 本机语音房: {0} → {1}" },
             { "diag_isolated", "[诊断] 本机孤立：语音房内只有自己，游戏房有 {0} 人" },
             { "diag_isolated_clear", "[诊断] 孤立解除，语音房内已有 {0} 人" },
             { "diag_roomvoice", "[诊断] 房间语音服判定为 {0}（来源: {1}）" },
@@ -233,8 +231,6 @@ namespace PeakVoiceFix
             { "cfg_unknown_region", "游戏那张区服编码表漏收了 hk（香港），导致港服房的房间码首字符是 '-'，而本体解码时会把它夹成表里第一项 us（美国）——结果客机被送去美国区找一个在香港的房间，必然失败。这里指定 '-' 应该解析成哪个区。留空 = 不猜（保持本体行为，房间码进不去港服房）。与 BetterRoomShare 的同类修复兼容：结果已经正确时本 mod 不会再插手。" },
             { "cfgn_wait_master", "切区服后等主服务器就绪" },
             { "cfg_wait_master", "本体切换区服时是「断开 → 连接新区 → 立刻加房」，此时还没连上主服务器，加房必然失败（本体自己写了等待协程却没接上）。开启后会先等连上再加房，最多等 20 秒。" },
-            { "cfgn_appid_guard", "Photon AppId 守卫" },
-            { "cfg_appid_guard", "本机 Photon AppId 防改写：插件加载时快照真 AppIdRealtime/AppIdVoice，之后发现被改写即还原，语音每次连接前也会兜底拨回。\n已知改写来源：LocalMultiplayer 会在每次 NetworkConnector.Start 把全局 AppId 换成它配置里的自建 Photon 应用——语音首连撞上就连进另一个应用的同名房，同区同房名却互不可见、双向静音。\n仅当你有意使用自建 Photon 应用时才需要关闭。" },
             { "joinwait_timeout", "[房间码] 等待主服务器超时（状态: {0}，区服: {1}），加房已取消。" },
             { "joinwait_ready", "[房间码] 主服务器已就绪（区服 {0}），继续加房" },
 
@@ -347,7 +343,7 @@ namespace PeakVoiceFix
             { "cfg_retry_interval", "Cooldown between auto-reconnect attempts." },
             { "cfg_manual_reconnect", "Allow Alt+K to force disconnect/reconnect voice." },
             { "cfgn_voice_recovery", "Auto Recover Voice State" },
-            { "cfg_voice_recovery", "Automatically restores a remote player's invalid voice-state reference on your machine.\nHow it happens: the game stores one voice state (mute/block etc.) per player; during an old/new character handover the registry entry can be lost, and the voice component reads the state only once at init - afterwards that player is treated as muted even when the voice connection is fine.\nWhen enabled it scans every 0.5s: if an initialized remote voice component's state reference is dead, a valid CharacterData belonging to the same player is taken from the registry first (falling back to that character's own data) and handed back to the stock component; mute, block and permission flags are never modified.\nDetection keeps running while the panel is hidden, and affected players show an error/restored note. Does not require CrossplayStutterFix (it prevents the loss; this repairs the reference afterwards) nor host/teammate installs. Turning it off keeps detection and the warning visible. Restoring the reference fixes one known cause of silence, not all of them." },
+            { "cfg_voice_recovery", "Restore invalid remote-player voice state references locally, preserving mute and block choices. CrossplayStutterFix is not required. Detection remains active when disabled." },
             { "line2_voice_state_missing", "Voice state error · local playback blocked" },
             { "line2_voice_state_recovered", "Voice state restored" },
             { "cfg_max_name_len", "Max display characters for names." },
@@ -382,7 +378,7 @@ namespace PeakVoiceFix
 
             // === Region control ===
             { "cfgn_forced_region", "Forced Region - needs restart" },
-            { "cfg_forced_region", "Force the game to connect to a specific Photon region. auto = let the game pick by ping.\nWARNING: forcing a region does not mean lower latency; a geographically closer region may still route worse - connecting to hk without a VPN/proxy can even double latency (200ms -> 400ms+). Use this only together with the region latency test (found in the Alt+J panel).\nOnly affects hosting your own room and the main-menu connection; joining someone else's room follows the host's region, which is the game's own behaviour. Accepts auto / asia / au / eu / hk / jp / sa / us / ussc / usw. Restart required." },
+            { "cfg_forced_region", "Force the game to connect to a specific Photon region. auto = let the game pick by ping.\nWARNING: forcing a region does not mean lower latency. Without a proxy/VPN, a geographically closer region often has worse routing - measured from mainland China, forcing hk can hit 400ms+ while auto (eu) sits around 220ms. Use \"Ping Regions\" in the Alt+J console before deciding.\nOnly affects hosting your own room and the main-menu connection; joining someone else's room follows the host's region, which is the game's own behaviour. Accepts auto / asia / au / eu / hk / jp / sa / us / ussc / usw. Restart required." },
             { "region_worse", "[Region] Forced {0} measures {1}ms, but auto ({2}) was only {3}ms - forcing made it worse. Consider setting it back to auto." },
             { "region_high", "[Region] Forced {0} measures {1}ms, which is high. Without a proxy, forcing a region usually does not help." },
             { "region_ping_partial", "Partial results measured so far:" },
@@ -396,7 +392,7 @@ namespace PeakVoiceFix
             { "region_auto", "auto (ping-based)" },
             { "region_cache_pun", "Game ping cache" },
             { "region_cache_voice", "Voice ping cache" },
-            { "region_unlisted", "unlisted (usually hk)" },
+            { "region_unlisted", "Unknown" },
             { "region_ping_title", "Region Latency" },
             { "region_ping_started", "[Region] Pinging regions, takes 3-10s..." },
             { "region_ping_busy", "[Region] A ping run is already in progress." },
@@ -449,9 +445,7 @@ namespace PeakVoiceFix
 
             // === Diagnostics (logged once per change, never broadcast) ===
             { "diag_vregion_change", "[Diag] Local voice region: {0} -> {1}" },
-            { "diag_vroom_change", "[Diag] Local voice room: {0} -> {1} (AppId {2})" },
-            { "diag_appid_snapshot", "[Diag] Photon AppId snapshot: realtime {0} / voice {1}" },
-            { "diag_appid_restored", "[AppIdGuard] AppId rewritten (realtime {0} / voice {1}), restored real values" },
+            { "diag_vroom_change", "[Diag] Local voice room: {0} -> {1}" },
             { "diag_isolated", "[Diag] Local isolated: alone in the voice room while {0} players are in the game room" },
             { "diag_isolated_clear", "[Diag] Isolation cleared, {0} clients in the voice room" },
             { "diag_roomvoice", "[Diag] Room voice server resolved to {0} (source: {1})" },
@@ -471,8 +465,6 @@ namespace PeakVoiceFix
             { "cfg_unknown_region", "The game's region-code table is missing hk (Hong Kong), so a Hong Kong room's code starts with '-' and the game's decoder clamps that to the first table entry, us. The result is that the client is sent to the US region to look for a room that lives in Hong Kong, which always fails. This setting decides what '-' should resolve to. Leave empty to not guess (vanilla behaviour). Compatible with BetterRoomShare's equivalent fix: if the result is already correct, this mod stays out of it." },
             { "cfgn_wait_master", "Wait for master server after region swap" },
             { "cfg_wait_master", "When the game switches region it does disconnect -> connect to new region -> join room immediately, while still connecting to the master server, so the join always fails (the game has a wait coroutine for this but never calls it). With this on, the join waits for the master server first, up to 20 seconds." },
-            { "cfgn_appid_guard", "Photon AppId Guard" },
-            { "cfg_appid_guard", "Protects this machine's Photon AppIds: snapshots the real AppIdRealtime/AppIdVoice at plugin load, restores them whenever the global settings get rewritten, and re-checks right before every voice connect.\nKnown source: LocalMultiplayer swaps both AppIds for its own Photon app on every NetworkConnector.Start - a voice first-connect that hits the rewrite lands in the other app's same-named room: same region and name, invisible to everyone, muted both ways.\nDisable only if you intentionally run a custom Photon app." },
             { "joinwait_timeout", "[RoomCode] Timed out waiting for the master server (state: {0}, region: {1}); join cancelled." },
             { "joinwait_ready", "[RoomCode] Master server ready (region {0}), continuing to join" },
 

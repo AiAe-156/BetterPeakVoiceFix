@@ -1,4 +1,4 @@
-﻿using BepInEx;
+using BepInEx;
 using HarmonyLib;
 using Photon.Pun;
 using Photon.Realtime;
@@ -125,13 +125,14 @@ namespace PeakVoiceFix
             GameObject tObj = new GameObject("StatusText");
             tObj.transform.SetParent(transform, false);
             ContentSizeFitter fitter = tObj.AddComponent<ContentSizeFitter>();
-            fitter.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
+            fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
             fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
             statsText = tObj.AddComponent<TextMeshProUGUI>();
             statsText.richText = true;
             statsText.raycastTarget = false;
             statsText.overflowMode = TextOverflowModes.Overflow;
-            statsText.textWrappingMode = TextWrappingModes.NoWrap;
+            statsText.textWrappingMode = TextWrappingModes.Normal;
+            statsText.parseCtrlCharacters = false;
             UpdateLayout();
             TrySyncFontFromGame();
         }
@@ -154,10 +155,10 @@ namespace PeakVoiceFix
             GUILayout.BeginHorizontal();
             if (GUILayout.Button(logFilterMode == 0 ? $"[★{L.Get("filter_all")}]" : L.Get("filter_all"), GUILayout.Width(60))) logFilterMode = 0;
             if (GUILayout.Button(logFilterMode == 1 ? $"[★{L.Get("filter_local")}]" : L.Get("filter_local"), GUILayout.Width(60))) logFilterMode = 1;
-            if (PhotonNetwork.InRoom) { foreach (var p in PhotonNetwork.PlayerList) { if (p.IsLocal) continue; string fixedName = NetworkManager.GetPlayerName(p.ActorNumber); string nameShort = fixedName.Length > 9 ? fixedName.Substring(0, 9) : fixedName; string btnLabel = (logFilterMode == -1 && targetActorNumber == p.ActorNumber) ? $"[★{nameShort}]" : nameShort; if (GUILayout.Button(btnLabel, GUILayout.Width(80))) { logFilterMode = -1; targetActorNumber = p.ActorNumber; } } }
+            if (PhotonNetwork.InRoom) { foreach (var p in PhotonNetwork.PlayerList) { if (p.IsLocal) continue; string fixedName = NetworkManager.GetPlayerName(p.ActorNumber); string nameShort = fixedName.Length > 9 ? fixedName.Substring(0, 9) : fixedName; string btnLabel = (logFilterMode == -1 && targetActorNumber == p.ActorNumber) ? $"[★{nameShort}]" : nameShort; if (GUILayout.Button(btnLabel, new GUIStyle(GUI.skin.button) { richText = false }, GUILayout.Width(80))) { logFilterMode = -1; targetActorNumber = p.ActorNumber; } } }
             GUILayout.EndHorizontal(); GUILayout.EndScrollView();
             debugScrollPosition = GUILayout.BeginScrollView(debugScrollPosition);
-            foreach (var log in debugLogs) { if (logFilterMode == 1 && !log.IsLocal) continue; if (logFilterMode == -1) { string targetName = NetworkManager.GetPlayerName(targetActorNumber); if (log.Player != targetName) continue; } string color = log.IsLocal ? "cyan" : "yellow"; if (log.Player == "System") color = "white"; GUILayout.Label($"<color={color}>[{log.Time}] {log.Player}:</color> {log.Msg}", new GUIStyle(GUI.skin.label) { richText = true }); }
+            foreach (var log in debugLogs) { if (logFilterMode == 1 && !log.IsLocal) continue; if (logFilterMode == -1) { string targetName = NetworkManager.GetPlayerName(targetActorNumber); if (log.Player != targetName) continue; } string color = log.IsLocal ? "cyan" : "yellow"; if (log.Player == "System") color = "white"; GUILayout.Label($"[{log.Time}] {log.Player}: {log.Msg}", new GUIStyle(GUI.skin.label) { richText = false, wordWrap = true }); }
             GUILayout.EndScrollView(); GUI.DragWindow(new Rect(0, 0, 10000, 20)); resizeHandleRect = new Rect(debugWindowRect.width - 20, debugWindowRect.height - 20, 20, 20); GUI.Label(resizeHandleRect, "◢"); Event e = Event.current; if (e.type == EventType.MouseDown && resizeHandleRect.Contains(e.mousePosition)) isResizing = true; else if (e.type == EventType.MouseUp) isResizing = false; else if (e.type == EventType.MouseDrag && isResizing) { debugWindowRect.width += e.delta.x; debugWindowRect.height += e.delta.y; if (debugWindowRect.width < 300) debugWindowRect.width = 300; if (debugWindowRect.height < 200) debugWindowRect.height = 200; }
         }
 
@@ -317,7 +318,7 @@ namespace PeakVoiceFix
                 if (isBadFont) TrySyncFontFromGame();
             }
 
-            // 定时更新 UI 内容
+            // 定时更新 UI 内容（先内容后布局：面板宽度按刚生成的文本量）
             if (Time.unscaledTime > nextUiUpdateTime)
             {
                 if (!inRoom) UpdateContent_RegionWarnOnly();
@@ -370,7 +371,7 @@ namespace PeakVoiceFix
         private void UpdateContent_RegionWarnOnly()
         {
             var sb = _sb; sb.Clear();
-            sb.Append($"<color={C_YELLOW}>{regionWarnMsg}</color>");
+            sb.Append($"<color={C_YELLOW}>{PanelText.Literal(regionWarnMsg)}</color>");
             SetStatsText(sb.ToString());
         }
 
@@ -384,7 +385,17 @@ namespace PeakVoiceFix
 
             float targetX = isRight ? Mathf.Abs(VoiceFix.OffsetX_Right.Value) : Mathf.Abs(VoiceFix.OffsetX_Left.Value);
             float targetY = isRight ? Mathf.Abs(VoiceFix.OffsetY_Right.Value) : Mathf.Abs(VoiceFix.OffsetY_Left.Value);
+            // Canvas reference units, not screen pixels. Keep the configured dock/offset unless off-screen.
+            float canvasWidth = ((RectTransform)myCanvas.transform).rect.width;
+            if (canvasWidth <= 0) canvasWidth = Screen.width / Mathf.Max(myCanvas.scaleFactor, 0.001f);
+            targetX = Mathf.Min(targetX, Mathf.Max(0f, (canvasWidth - 1f) * 0.5f));
             RectTransform rt = statsText.rectTransform;
+            // 宽度跟上一版一样按内容自适应（等价原 PreferredSize），只是多了上限：
+            // 内容短则窄，长内容在上限处换行，不再把面板顶宽。
+            float cap = PanelText.PanelWidth(canvasWidth, targetX);
+            float natural = statsText.GetPreferredValues(statsText.text ?? string.Empty, Mathf.Infinity, Mathf.Infinity).x;
+            if (!(natural > 1f)) natural = 1f; // 空文本/字体未就绪/NaN 时保底
+            rt.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, Mathf.Min(natural, cap));
             if (isRight)
             {
                 rt.anchorMin = new Vector2(1, 1); rt.anchorMax = new Vector2(1, 1); rt.pivot = new Vector2(1, 1);
@@ -398,7 +409,7 @@ namespace PeakVoiceFix
             statsText.fontSize = VoiceFix.FontSize.Value;
         }
 
-        public void TriggerNotification(string playerName) { notificationMsg = $"<color={C_TEXT}>{playerName}:</color> {FormatStatusTag(L.Get("notification_disconnected"), C_YELLOW)}"; notificationExpiry = Time.unscaledTime + 5f; }
+        public void TriggerNotification(string playerName) { notificationMsg = $"<color={C_TEXT}>{PanelText.Literal(playerName)}:</color> {FormatStatusTag(L.Get("notification_disconnected"), C_YELLOW)}"; notificationExpiry = Time.unscaledTime + 5f; }
         public void ShowStatsTemporary() { notificationMsg = $"<color={C_YELLOW}>{L.Get("manual_operation")}</color>"; notificationExpiry = Time.unscaledTime + 5f; }
         // ====== 统一分类：每次 UI 刷新算一次，行渲染与聚合计数共用同一结果，杜绝自相矛盾 ======
         private void ClassifyPlayers()
@@ -555,15 +566,13 @@ namespace PeakVoiceFix
 
         private static string PingColor(int p) => p < 100 ? C_GREEN : (p < 200 ? C_YELLOW : C_RED);
 
-        // 数字进 mspace 定宽槽，"ms" 留在槽外按正常字宽排——m 字形比 0.6em 宽，
-        // 进 mspace 会被压到前一字符上。pad=true 右对齐 3 字符槽（首列，保 "-" 逐行对齐）；
-        // pad=false 不补空格（次列左对齐）。<=0 给空槽保住列位；>999 显示 >1s。
-        private static string FmtPingSlot(int p, bool pad)
+        // 延迟槽固定 6 字符宽（最大 "9999ms"），数值右对齐让每列的 "-" 和 ms 天然对齐；
+        // 超过 9999 显示红 ×，<=0 给空槽保住列位（由调用方决定要不要连 "-" 一起输出）。
+        private static string FmtPingSlot(int p)
         {
-            if (p <= 0) return "<mspace=0.6em>     </mspace>";
-            if (p > 999) return $"<color={C_RED}><mspace=0.6em>>1s  </mspace></color>";
-            string num = pad ? $"{p,3}" : p.ToString();
-            return $"<color={PingColor(p)}><mspace=0.6em>{num}</mspace>ms</color>";
+            if (p <= 0) return "      ";
+            if (p > 9999) return $"<color={C_RED}>   ×  </color>";
+            return $"<color={PingColor(p)}>{p,4}ms</color>";
         }
 
         // ===== 新加入玩家通知（只有房主看得到）=====
@@ -639,7 +648,7 @@ namespace PeakVoiceFix
         {
             if (c.IsMod && !string.IsNullOrEmpty(c.VoiceRegion))
             {
-                string d = RegionControl.Describe(c.VoiceRegion);
+                string d = string.IsNullOrEmpty(c.VoiceRegion) ? L.Get("unknown") : RegionControl.Describe(c.VoiceRegion);
                 if (c.VoicePing > 0) d += $" {c.VoicePing}ms";
                 return d;
             }
@@ -653,9 +662,9 @@ namespace PeakVoiceFix
             {
                 string body;
                 if (n.ResolvedTime < 0f) body = $"<color={C_YELLOW}>{L.Get("newjoin_connecting")}</color>";
-                else if (n.Success) body = $"<color={C_GREEN}>{n.Detail}</color>";
+                else if (n.Success) body = $"<color={C_GREEN}>{PanelText.Literal(n.Detail)}</color>";
                 else body = $"<color={C_RED}>{L.Get("newjoin_failed")}</color>";
-                sb.Append($"<size=85%><color={C_TEXT}>{L.Get("newjoin")} </color><color={C_GREEN}>{Truncate(n.Name, 0, false)}</color><color={C_TEXT}> - </color>{body}</size>\n");
+                sb.Append($"<size=85%><color={C_TEXT}>{L.Get("newjoin")} </color><color={C_GREEN}>{PanelText.Literal(n.Name)}</color><color={C_TEXT}> - </color>{body}</size>\n");
             }
         }
 
@@ -674,7 +683,7 @@ namespace PeakVoiceFix
             string roomRegion = PhotonNetwork.CloudRegion;
             string myIP = GetCurrentIP();
 
-            sb.Append($"<color={C_TEXT}>{L.Get("hdr_local_state")} {RegionControl.Describe(roomRegion)} / </color>");
+            sb.Append($"<color={C_TEXT}>{L.Get("hdr_local_state")} {DisplayRegion(roomRegion)} / </color>");
 
             if (string.IsNullOrEmpty(myIP))
             {
@@ -690,7 +699,7 @@ namespace PeakVoiceFix
             bool ok = !isolated && (string.IsNullOrEmpty(roomVoice) || roomVoice == myIP);
             string myRegion = NetworkManager.LocalVoiceRegion ?? roomRegion;
 
-            sb.Append($"<color={C_GREEN}>{RegionControl.Describe(myRegion)}</color>");
+            sb.Append($"<color={C_GREEN}>{DisplayRegion(myRegion)}</color>");
             sb.Append(ok ? $" <color={C_GREEN}>✓</color>" : $" <color={C_RED}>×</color>");
             if (!ok)
             {
@@ -771,7 +780,7 @@ namespace PeakVoiceFix
             bool isolated = NetworkManager.IsLocalIsolated();
 
             sb.Append("<size=75%>");
-            sb.Append($"<color={C_TEXT}>{L.Get("hdr_room_region")} {RegionControl.Describe(roomRegion)}</color>");
+            sb.Append($"<color={C_TEXT}>{L.Get("hdr_room_region")} {DisplayRegion(roomRegion)}</color>");
             if (proMode)
             {
                 string gameIP = PhotonNetwork.ServerAddress;
@@ -792,8 +801,8 @@ namespace PeakVoiceFix
             else if (amHost && !string.IsNullOrEmpty(myIP) && !isolated)
             {
                 // 房主且自己连上了：这就是金标准，平铺直叙，不上色不打勾
-                string voiceRegion = GuessRegionOfRoomVoice(src, roomVoiceIP, roomRegion);
-                sb.Append($"<color={C_TEXT}>{RegionControl.Describe(voiceRegion)}</color>");
+                string voiceRegion = GetReportedRoomVoiceRegion(src, roomVoiceIP);
+                sb.Append($"<color={C_TEXT}>{DisplayRegion(voiceRegion)}</color>");
                 if (proMode) sb.Append($"<color={C_TEXT}> ({roomVoiceIP})</color>");
             }
             else
@@ -801,9 +810,9 @@ namespace PeakVoiceFix
                 bool match = !string.IsNullOrEmpty(myIP) && myIP == roomVoiceIP && !isolated;
                 // 一致 → 全绿；不一致 → 这段转黄（它是正确答案，但当前整体异常），× 用红
                 string bodyColor = match ? C_GREEN : C_YELLOW;
-                string voiceRegion = GuessRegionOfRoomVoice(src, roomVoiceIP, roomRegion);
+                string voiceRegion = GetReportedRoomVoiceRegion(src, roomVoiceIP);
 
-                sb.Append($"<color={bodyColor}>{RegionControl.Describe(voiceRegion)}</color>");
+                sb.Append($"<color={bodyColor}>{DisplayRegion(voiceRegion)}</color>");
                 sb.Append(match ? $" <color={C_GREEN}>✓</color>" : $" <color={C_RED}>×</color>");
                 if (proMode) sb.Append($"<color={C_TEXT}> (</color><color={bodyColor}>{roomVoiceIP}</color><color={C_TEXT}>)</color>");
                 if (isolated) sb.Append($" <color={C_RED}>{L.Get("local_isolated")}</color>");
@@ -818,16 +827,16 @@ namespace PeakVoiceFix
         /// 「房间语音服」那台机器在哪个区。本机推定时就是本机的语音区服；
         /// 别人上报时用上报者的语音区服，实在没有就退回房间区服（同区是绝大多数情况）。
         /// </summary>
-        private string GuessRegionOfRoomVoice(NetworkManager.RoomVoiceSource src, string roomVoiceIP, string roomRegion)
+        private string GetReportedRoomVoiceRegion(NetworkManager.RoomVoiceSource src, string roomVoiceIP)
         {
-            if (src == NetworkManager.RoomVoiceSource.LocalGuess) return NetworkManager.LocalVoiceRegion ?? roomRegion;
+            if (roomVoiceIP == GetCurrentIP()) return NetworkManager.LocalVoiceRegion;
             foreach (var kvp in NetworkManager.PlayerCache)
             {
                 if (kvp.Value == null) continue;
                 if (kvp.Value.IP == roomVoiceIP && !string.IsNullOrEmpty(kvp.Value.VoiceRegion))
                     return kvp.Value.VoiceRegion;
             }
-            return roomRegion;
+            return null;
         }
 
         /// <summary>
@@ -863,7 +872,7 @@ namespace PeakVoiceFix
                 return;
             }
             ClassifyPlayers();
-            bool proMode = VoiceFix.ShowProfessionalInfo.Value; float alignX = VoiceFix.LatencyOffset.Value;
+            bool proMode = VoiceFix.ShowProfessionalInfo.Value; float alignX = GetLatencyColumn();
 
             sb.Append($"<align=\"center\"><size=120%><color={C_TEXT}>{L.Get("ui_title")} ({VoiceFix.MOD_VERSION})</color></size></align>\n");
             sb.Append($"<align=\"center\"><color={C_TEXT}>------------------</color></align>\n");
@@ -885,7 +894,11 @@ namespace PeakVoiceFix
             }
 
             sb.Append($"<align=\"center\"><color={C_TEXT}>------------------</color></align>\n");
-            sb.Append($"<size=100%><color={C_TEXT}>{L.Get("col_status")}  {L.Get("col_name")}</color><pos={alignX}><color={C_TEXT}>| {L.Get("col_ping")}</color></size>\n");
+            string columnHeader = L.Get("col_status") + "  " + L.Get("col_name");
+            bool headerFits = alignX > 0 && MeasureText(columnHeader, 100) + 8f <= alignX
+                && alignX + MeasureText(L.Get("col_ping"), 100) <= statsText.rectTransform.rect.width;
+            string headerBreak = headerFits ? $"<pos={alignX.ToString(CultureInfo.InvariantCulture)}>" : "\n";
+            sb.Append($"<size=100%><color={C_TEXT}>{columnHeader}</color>{headerBreak}<color={C_TEXT}>{L.Get("col_ping")}</color></size>\n");
             sb.Append("<line-height=50%>\n</line-height>");
 
             // 渲染玩家列表：复用统一分类结果（含每人 Verdict），不再用"IP 非空=hasModData"，也不渲染离场残留。
@@ -922,7 +935,7 @@ namespace PeakVoiceFix
 
                 foreach (var sos in NetworkManager.ActiveSOSList)
                 {
-                    sb.Append($"<size=80%><color={C_RED}>{L.Get("sos_detected", sos.PlayerName)}</color></size>\n");
+                    sb.Append($"<size=80%><color={C_RED}>{L.Get("sos_detected", PanelText.Literal(sos.PlayerName))}</color></size>\n");
                     string lastIP = string.IsNullOrEmpty(sos.OriginIP) ? L.Get("unknown") : sos.OriginIP;
                     sb.Append($"  <size=80%><color={C_TEXT}>{L.Get("sos_target")}: ({sos.TargetIP}) | {L.Get("sos_last")}: {lastIP}</color></size>\n");
                 }
@@ -970,7 +983,7 @@ namespace PeakVoiceFix
                         .ThenBy(x => x.Key, StringComparer.Ordinal)
                         .Select(x => x.Key)
                         .FirstOrDefault();
-                    sb.Append($"<color={C_TEXT}>{L.Get("majority_region", RegionControl.Describe(majRegion2), majVoiceIP ?? L.Get("unknown"), rCnt2)}</color>\n");
+                    sb.Append($"<color={C_TEXT}>{L.Get("majority_region", DisplayRegion(majRegion2), majVoiceIP ?? L.Get("unknown"), rCnt2)}</color>\n");
                 }
             }
 
@@ -1000,7 +1013,7 @@ namespace PeakVoiceFix
             if (nameOK == false) sb.Append($"<color={C_RED}>{L.Get("room_name_mismatch")}</color>\n");
             else if (!nameOK.HasValue) sb.Append($"<color={C_YELLOW}>{L.Get("room_name_pending")}</color>\n");
 
-            sb.Append($"<color={C_TEXT}>{L.Get("snap_forced")} {(RegionControl.IsAuto ? RegionControl.AUTO : RegionControl.Describe(RegionControl.Configured))}</color>\n");
+            sb.Append($"<color={C_TEXT}>{L.Get("snap_forced")} {(RegionControl.IsAuto ? RegionControl.AUTO : DisplayRegion(RegionControl.Configured))}</color>\n");
 
             int rCnt;
             string majRegion = NetworkManager.GetMajorityRegion(out rCnt);
@@ -1012,12 +1025,12 @@ namespace PeakVoiceFix
             foreach (var g in groups)
             {
                 if (g.Key == majRegion) continue;
-                string label = string.IsNullOrEmpty(g.Key) ? L.Get("region_not_reported") : RegionControl.Describe(g.Key);
-                var names = g.Select(x => x.Value.PlayerName).Take(3);
+                string label = string.IsNullOrEmpty(g.Key) ? L.Get("region_not_reported") : DisplayRegion(g.Key);
+                var names = g.Select(x => PanelText.Literal(x.Value.PlayerName)).Take(3);
                 sb.Append($"<color={C_TEXT}> - {label}: {string.Join(",", names)}</color>\n");
             }
             if (NetworkManager.HostHistory.Count > 0)
-                sb.Append($"<color={C_TEXT}>{L.Get("history")}</color> {NetworkManager.HostHistory[NetworkManager.HostHistory.Count - 1]}\n");
+                sb.Append($"<color={C_TEXT}>{L.Get("history")}</color> {PanelText.Literal(NetworkManager.HostHistory[NetworkManager.HostHistory.Count - 1])}\n");
             sb.Append("</size>");
         }
 
@@ -1025,23 +1038,35 @@ namespace PeakVoiceFix
         private string GetClientStateLocalized(ClientState state) { switch (state) { case ClientState.PeerCreated: return L.Get("cs_initializing"); case ClientState.Authenticating: return L.Get("cs_authenticating"); case ClientState.Authenticated: return L.Get("cs_authenticated"); case ClientState.Joining: return L.Get("cs_joining"); case ClientState.Joined: return L.Get("cs_joined"); case ClientState.Disconnecting: return L.Get("cs_disconnecting"); case ClientState.Disconnected: return L.Get("cs_disconnected"); case ClientState.ConnectingToGameServer: return L.Get("cs_connecting_game"); case ClientState.ConnectingToMasterServer: return L.Get("cs_connecting_master"); case ClientState.ConnectingToNameServer: return L.Get("cs_connecting_name"); default: return state.ToString(); } }
         private void BuildPlayerEntry(StringBuilder sb, in PlayerClass d, bool pro, float alignX)
         {
-            int prefixWeight = (d.Verdict == Verdict.Connecting) ? 8 : 6;
-
             string statusTag;
             if (d.IsLocal) statusTag = FormatStatusTag(L.Get("label_local"), C_TEXT);
             else { string label, color; GetVerdictTag(d.Verdict, out label, out color); statusTag = FormatStatusTag(label, color); }
 
-            string prefix = d.IsHost ? $"<color={C_GOLD}>{VoiceFix.HostSymbol.Value} </color>" : "";
-            string truncatedName = Truncate(d.Name, prefixWeight, d.IsHost);
-
-            string pingStr = "";
+            string prefix = d.IsHost ? $"<color={C_GOLD}>{PanelText.Literal(VoiceFix.HostSymbol.Value)} </color>" : "";
+            string leading = statusTag + " " + prefix;
+            float leadingWidth = MeasureText(leading, 80);
+            float panelWidth = statsText.rectTransform.rect.width;
+            string ping = "";
             if (d.Ping > 0)
             {
-                pingStr = $"<pos={alignX}><color={C_TEXT}>| </color>{FmtPingSlot(d.Ping, true)}";
-                if (d.VoicePing > 0)
-                    pingStr += $"<color={C_TEXT}> - </color>{FmtPingSlot(d.VoicePing, false)}";
+                ping = $"<color={C_TEXT}>| </color><mspace=0.6em>{FmtPingSlot(d.Ping)}";
+                if (d.VoicePing > 0) ping += $"<color={C_TEXT}> - </color>{FmtPingSlot(d.VoicePing)}";
+                ping += "</mspace>";
             }
-            sb.Append($"<size=80%>{statusTag} {prefix}<color={C_GREEN}>{truncatedName}</color>{pingStr}</size>\n");
+            bool inline = alignX > 0 && leadingWidth + MeasureText("名字…", 80) + 8f <= alignX
+                && alignX + MeasureText(ping, 80) <= panelWidth;
+            float nameWidth = (inline && ping.Length > 0 ? alignX - 8f : panelWidth) - leadingWidth;
+            // At very narrow widths keep the name readable on its own line, then the latency below.
+            if (nameWidth < MeasureText("…", 80))
+            {
+                leading += "\n";
+                nameWidth = panelWidth;
+                inline = false;
+            }
+            int maxWeight = VoiceFix.MaxTotalLength != null ? VoiceFix.MaxTotalLength.Value : 26;
+            string name = PanelText.FitName(d.Name, nameWidth, maxWeight, text => MeasureText(text, 80));
+            string pingBreak = inline ? $"<pos={alignX.ToString(CultureInfo.InvariantCulture)}>" : "\n";
+            sb.Append($"<size=80%>{leading}<color={C_GREEN}>{name}</color>{(ping.Length > 0 ? pingBreak + ping : "")}</size>\n");
 
             // 第二行：本机始终有；其余只在需要解释的状态下出（等待/跨区/断开）。
             // 同步和错位不出——错位≈连接正常，同步没什么要解释的。
@@ -1087,7 +1112,7 @@ namespace PeakVoiceFix
                 // 房主连上了就是金标准：平铺直叙，不上色不打勾
                 if (PhotonNetwork.IsMasterClient && !isolated)
                 {
-                    text = $"<color={C_TEXT}>{L.Get("line2_voice_server")} {RegionControl.Describe(d.VoiceRegion)}</color>";
+                    text = $"<color={C_TEXT}>{L.Get("line2_voice_server")} {DisplayRegion(d.VoiceRegion)}</color>";
                     if (pro) text += $"<color={C_TEXT}> ({myIP})</color>";
                     return;
                 }
@@ -1137,7 +1162,7 @@ namespace PeakVoiceFix
         /// <summary>「连接的语音服: eu 欧洲 ✓ (IP)」，符号在括号前，符号本身与括号一律米白。</summary>
         private string FormatVoiceServerLine(string region, string ip, bool ok, bool showIP)
         {
-            string regionText = string.IsNullOrEmpty(region) ? L.Get("unknown") : RegionControl.Describe(region);
+            string regionText = string.IsNullOrEmpty(region) ? L.Get("unknown") : DisplayRegion(region);
             var s = new StringBuilder();
             s.Append($"<color={C_TEXT}>{L.Get("line2_voice_server")} </color>");
             s.Append($"<color={C_GREEN}>{regionText}</color>");
@@ -1193,7 +1218,21 @@ namespace PeakVoiceFix
             int gameCount = PhotonNetwork.CurrentRoom != null ? PhotonNetwork.CurrentRoom.PlayerCount : 0;
             return voiceCount >= gameCount;
         }
-        private string Truncate(string s, int prefixWeight, bool isHost) { if (string.IsNullOrEmpty(s)) return ""; int totalLimit = 26; if (VoiceFix.MaxTotalLength != null) totalLimit = VoiceFix.MaxTotalLength.Value; int nameLimit = totalLimit - prefixWeight; if (nameLimit < 6) nameLimit = 6; if (isHost) nameLimit -= 2; int currentLen = 0; for (int i = 0; i < s.Length; i++) { int charWeight = (s[i] > 255) ? 2 : 1; if (currentLen + charWeight > nameLimit) return s.Substring(0, i) + "..."; currentLen += charWeight; } return s; }
+        private static string DisplayRegion(string region) => PanelText.Literal(
+            string.IsNullOrEmpty(region) ? L.Get("unknown") : RegionControl.Describe(region));
+
+        private float MeasureText(string text, int percent) => statsText.GetPreferredValues(
+            $"<size={percent}%>{text}</size>", Mathf.Infinity, Mathf.Infinity).x;
+
+        private float GetLatencyColumn()
+        {
+            float width = statsText.rectTransform.rect.width;
+            float pingWidth = Mathf.Max(MeasureText("| <mspace=0.6em>9999ms - 9999ms</mspace>", 80),
+                MeasureText(L.Get("col_ping"), 100));
+            float x = Mathf.Min(VoiceFix.LatencyOffset.Value, width - pingWidth - 4f);
+            return x > MeasureText(L.Get("col_status") + "  " + L.Get("col_name"), 100) + 8f ? x : -1f;
+        }
+
 
         private float lastJoinTimesCleanup = 0f;
         private void CleanupJoinTimes()

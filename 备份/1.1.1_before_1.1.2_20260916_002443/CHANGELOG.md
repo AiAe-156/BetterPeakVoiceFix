@@ -1,30 +1,6 @@
-# 1.1.3.1
+# 1.1.1
 
 ## 中文
-
-- 仅移除错误打包进来的图片文件夹，我的错。
-
-## English
-
-- Removed an image folder that was mistakenly included in the package. My bad.
-
-# 1.1.3
-
-## 中文
-
-### 新增
-
-- Steam 邀请加入时，房间名改按 UTF-8 读取（原版为 ASCII）：安装 BetterRoomShare 的房主发出的中文房名可以完整接收并正常加入。仅影响本机接收的房间名，不修改发送协议、其他玩家数据或游戏区服，原版邀请行为不变。
-- 目标读取已是 UTF-8（例如同时安装 BetterRoomShare）时补丁保持原样，不会重复修改；目标方法签名或结构与原版不符时不做替换、只记录一次警告，其余功能不受影响。
-- 自动恢复本机远端玩家失效的语音状态引用，缓解连接正常却因状态引用丢失而无声的问题；默认开启，可在设置中关闭自动恢复并保留检测。
-- 玩家第二行显示红色“语音状态异常·本机播放受阻”，非 Pro 模式和简易面板同样可见；恢复后显示“语音状态已恢复”8 秒。
-- 面板隐藏时仍进行检测与恢复；不依赖 CrossplayStutterFix，不要求主机或队友安装，不主动修改静音/屏蔽选择。
-- 新增 Photon AppId 守卫：插件加载时快照本机真 AppIdRealtime/AppIdVoice，发现全局设置被改写即还原，语音每次连接前也会兜底拨回。可修复 LocalMultiplayer（未按本机应用配置时）把全局 AppId 换成自建 Photon 应用、导致语音连进另一个应用同名房而双向静音的问题；默认开启，可在设置中关闭。
-- 语音房诊断日志附带实际连接的 AppId，便于核对是否进错应用。
-
-### 更改
-
-- 详细面板延迟列对齐：房间延迟用定宽槽右对齐、语音延迟左对齐，每行的"-"竖直对齐；"ms"留在槽外避免字符被挤压。
 
 ### 修复
 
@@ -34,20 +10,6 @@
 - 修复离线模式下"本机延迟"显示 0ms 假数据的问题。
 
 ## English
-
-### Added
-
-- Steam invite join now reads the room name as UTF-8 (vanilla used ASCII): Chinese room names sent by a host running BetterRoomShare are received intact and can be joined. This only changes how the local client receives the room name — the send protocol, other players' data, and game regions are untouched, and vanilla invite behavior is unchanged.
-- If the target read already uses UTF-8 (e.g., BetterRoomShare is also installed), the patch leaves it as-is without re-patching. If the target method's signature or structure no longer matches vanilla, nothing is replaced and a single warning is logged while the rest of the mod keeps working.
-- Automatically restores invalid remote-player voice state references locally, addressing one cause of silence despite a healthy connection. Enabled by default; disabling recovery keeps detection active.
-- Shows voice state errors on the player's second line without Pro mode, including affected players in the simple overlay. A restoration notice remains for 8 seconds.
-- Detection and recovery continue while the overlay is hidden. No CrossplayStutterFix, host or peer installation is required; mute and block flags are not explicitly modified.
-- Added a Photon AppId guard: the real AppIdRealtime/AppIdVoice are snapshotted at plugin load, restored whenever the global settings get rewritten, and re-applied right before every voice connect. Fixes the case where LocalMultiplayer (when not configured with the game's own app ids) swaps the global AppIds for its own Photon app, leaving voice in the other app's same-named room and muted in both directions. Enabled by default; can be disabled in settings.
-- The voice-room diagnostic line now includes the effective AppId, making a wrong-app join visible in the log.
-
-### Changed
-
-- Latency column alignment in the detailed panel: room ping right-aligns in a fixed-width slot, voice ping is left-aligned, and every row's "-" lines up vertically. "ms" stays outside the slot so the glyph is not squeezed.
 
 ### Fixed
 
@@ -169,3 +131,4 @@
 - Updated `README.md` documentation.
 
 0.3.4 Released
+

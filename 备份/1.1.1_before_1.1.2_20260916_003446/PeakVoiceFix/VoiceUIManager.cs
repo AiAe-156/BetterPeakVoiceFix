@@ -96,7 +96,6 @@ namespace PeakVoiceFix
             public int ActorNumber; public string Name; public string IP; public int Ping;
             public bool IsLocal; public bool IsHost; public bool IsMod; public byte RemoteState;
             public Verdict Verdict; public bool IsConnecting;
-            public VoiceStateRecovery.Status VoiceState;
             public string VoiceRegion;   // 语音客户端所在区服；null = 不知道（没装 mod 或老版本）
             public int VoicePing;        // 语音连接延迟；-1 = 未知
             public string ModVersion;    // 用于"版本过旧"提示
@@ -484,7 +483,6 @@ namespace PeakVoiceFix
                     ActorNumber = actor, Name = name, IP = ip, Ping = ping,
                     IsLocal = isLocal, IsHost = isHost, IsMod = isMod, RemoteState = rState,
                     Verdict = v, IsConnecting = connecting,
-                    VoiceState = isLocal ? VoiceStateRecovery.Status.Healthy : VoiceStateRecovery.GetStatus(actor),
                     VoiceRegion = vRegion, VoicePing = vPing, ModVersion = modVer, CrossRegion = crossRegion
                 });
                 if (pending) pendingIdx.Add(_classified.Count - 1);
@@ -555,15 +553,13 @@ namespace PeakVoiceFix
 
         private static string PingColor(int p) => p < 100 ? C_GREEN : (p < 200 ? C_YELLOW : C_RED);
 
-        // 数字进 mspace 定宽槽，"ms" 留在槽外按正常字宽排——m 字形比 0.6em 宽，
-        // 进 mspace 会被压到前一字符上。pad=true 右对齐 3 字符槽（首列，保 "-" 逐行对齐）；
-        // pad=false 不补空格（次列左对齐）。<=0 给空槽保住列位；>999 显示 >1s。
-        private static string FmtPingSlot(int p, bool pad)
+        // 延迟槽固定 6 字符宽（最大 "9999ms"），数值右对齐让每列的 "-" 和 ms 天然对齐；
+        // 超过 9999 显示红 ×，<=0 给空槽保住列位（由调用方决定要不要连 "-" 一起输出）。
+        private static string FmtPingSlot(int p)
         {
-            if (p <= 0) return "<mspace=0.6em>     </mspace>";
-            if (p > 999) return $"<color={C_RED}><mspace=0.6em>>1s  </mspace></color>";
-            string num = pad ? $"{p,3}" : p.ToString();
-            return $"<color={PingColor(p)}><mspace=0.6em>{num}</mspace>ms</color>";
+            if (p <= 0) return "      ";
+            if (p > 9999) return $"<color={C_RED}>   ×  </color>";
+            return $"<color={PingColor(p)}>{p,4}ms</color>";
         }
 
         // ===== 新加入玩家通知（只有房主看得到）=====
@@ -729,12 +725,6 @@ namespace PeakVoiceFix
                 sb.Append($"<color={C_TEXT}>{L.Get("hdr_room_status")} </color>");
                 AppendRoomStatusLine(sb, null);
                 AppendNewJoinLines(sb);
-                foreach (var player in _classified)
-                {
-                    if (player.VoiceState == VoiceStateRecovery.Status.Healthy) continue;
-                    sb.Append($"<size=80%>{PanelText.Literal(player.Name)}</size>\n");
-                    sb.Append($"<size=60%>    » {VoiceStateText(player.VoiceState)}</size>\n");
-                }
             }
             if (Time.unscaledTime < notificationExpiry) sb.Append($"{notificationMsg}\n");
             SetStatsText(sb.ToString());
@@ -885,7 +875,7 @@ namespace PeakVoiceFix
             }
 
             sb.Append($"<align=\"center\"><color={C_TEXT}>------------------</color></align>\n");
-            sb.Append($"<size=100%><color={C_TEXT}>{L.Get("col_status")}  {L.Get("col_name")}</color><pos={alignX}><color={C_TEXT}>| {L.Get("col_ping")}</color></size>\n");
+            sb.Append($"<size=100%><color={C_TEXT}>{L.Get("col_status")}  {L.Get("col_name")}</color><pos={alignX}><color={C_TEXT}>{L.Get("col_ping")}</color></size>\n");
             sb.Append("<line-height=50%>\n</line-height>");
 
             // 渲染玩家列表：复用统一分类结果（含每人 Verdict），不再用"IP 非空=hasModData"，也不渲染离场残留。
@@ -993,12 +983,9 @@ namespace PeakVoiceFix
             //    `_voice_` 就是完整后缀，后面本来不该有内容。
             string room = (PhotonNetwork.CurrentRoom != null) ? PhotonNetwork.CurrentRoom.Name : null;
             string vroom = NetworkManager.LocalVoiceRoomName;
-            bool? nameOK = PanelText.RoomNamesMatch(room, vroom);
-            string nameColor = nameOK == false ? C_RED : C_TEXT;
-            sb.Append($"<color={nameColor}>{L.Get("snap_roomcode")}\n{PanelText.Literal(string.IsNullOrEmpty(room) ? L.Get("unknown") : room)}</color>\n");
-            sb.Append($"<color={nameColor}>{L.Get("snap_voicename")}\n{PanelText.Literal(string.IsNullOrEmpty(vroom) ? L.Get("unknown") : vroom)}</color>\n");
-            if (nameOK == false) sb.Append($"<color={C_RED}>{L.Get("room_name_mismatch")}</color>\n");
-            else if (!nameOK.HasValue) sb.Append($"<color={C_YELLOW}>{L.Get("room_name_pending")}</color>\n");
+            bool nameOK = string.IsNullOrEmpty(room) || string.IsNullOrEmpty(vroom) || vroom == room + "_voice_";
+            sb.Append($"<color={(nameOK ? C_TEXT : C_RED)}>{L.Get("snap_roomcode")} {room ?? "—"}</color><color={C_TEXT}> ({RegionControl.DecodeRoomRegion(room)})</color>");
+            sb.Append($"<color={C_TEXT}> | {L.Get("snap_voicename")} </color><color={(nameOK ? C_TEXT : C_RED)}>{vroom ?? "—"}</color>\n");
 
             sb.Append($"<color={C_TEXT}>{L.Get("snap_forced")} {(RegionControl.IsAuto ? RegionControl.AUTO : RegionControl.Describe(RegionControl.Configured))}</color>\n");
 
@@ -1037,16 +1024,18 @@ namespace PeakVoiceFix
             string pingStr = "";
             if (d.Ping > 0)
             {
-                pingStr = $"<pos={alignX}><color={C_TEXT}>| </color>{FmtPingSlot(d.Ping, true)}";
+                // mspace 强制等宽——同步到的游戏字体未必等宽，回退到 LiberationSans 更是比例字体，
+                // 光补空格对不齐；槽位本身固定 6 字符，双保险。
+                pingStr = $"<pos={alignX}><color={C_TEXT}>| </color><mspace=0.6em>{FmtPingSlot(d.Ping)}";
                 if (d.VoicePing > 0)
-                    pingStr += $"<color={C_TEXT}> - </color>{FmtPingSlot(d.VoicePing, false)}";
+                    pingStr += $"<color={C_TEXT}> - </color>{FmtPingSlot(d.VoicePing)}";
+                pingStr += "</mspace>";
             }
             sb.Append($"<size=80%>{statusTag} {prefix}<color={C_GREEN}>{truncatedName}</color>{pingStr}</size>\n");
 
             // 第二行：本机始终有；其余只在需要解释的状态下出（等待/跨区/断开）。
             // 同步和错位不出——错位≈连接正常，同步没什么要解释的。
             bool needLine2 = d.IsLocal
-                          || d.VoiceState != VoiceStateRecovery.Status.Healthy
                           || d.Verdict == Verdict.Connecting
                           || d.Verdict == Verdict.Abnormal
                           || d.Verdict == Verdict.Disconnected;
@@ -1054,8 +1043,6 @@ namespace PeakVoiceFix
 
             string line2, lineColor;
             BuildLine2(d, pro, out line2, out lineColor);
-            if (d.VoiceState != VoiceStateRecovery.Status.Healthy)
-                line2 = VoiceStateText(d.VoiceState) + (string.IsNullOrEmpty(line2) ? "" : "  ·  " + line2);
             if (string.IsNullOrEmpty(line2)) return;
             sb.Append($"<voffset=0.26em><size=60%>    » {line2}</size></voffset>\n");
         }
@@ -1151,13 +1138,6 @@ namespace PeakVoiceFix
         /// 队友的 mod 版本是否比本机旧。混装是修好区服绑定后唯一剩下的分叉来源，
         /// 而我们改不了对方的连接，所以能做的就是把"他该更新"这件事说出来。
         /// </summary>
-        private static string VoiceStateText(VoiceStateRecovery.Status status)
-        {
-            return status == VoiceStateRecovery.Status.Missing
-                ? $"<color={C_RED}>{L.Get("line2_voice_state_missing")}</color>"
-                : $"<color={C_GREEN}>{L.Get("line2_voice_state_recovered")}</color>";
-        }
-
         private bool IsOlderVersion(string otherVersion)
         {
             if (string.IsNullOrEmpty(otherVersion)) return false;
@@ -1185,7 +1165,6 @@ namespace PeakVoiceFix
         {
             // 离线模式没有语音可监控，视为正常——否则面板被"异常自动出现"规则钉死常显。
             if (PhotonNetwork.OfflineMode) return true;
-            if (VoiceStateRecovery.HasNotice) return false;
             if (!IsVoiceConnected() || IsMismatch() || NetworkManager.TotalRetryCount > 0) return false;
             // 全员在语音（语音房人数 ≥ 游戏房人数）即视为正常；[错位] 是纯 ID 漂移、音频正常，不阻止自动隐藏。
             int voiceCount = (NetworkManager.punVoice != null && NetworkManager.punVoice.Client != null && NetworkManager.punVoice.Client.CurrentRoom != null)
